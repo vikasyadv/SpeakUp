@@ -23,3 +23,8 @@ speakup-client/.vite/
 speakup-server/target/
 speakup-server/.mvn/wrapper/maven-wrapper.jar
 speakup-server/*.log
+
+# ─── Python ───
+__pycache__/
+*.pyc
+*.pyo
