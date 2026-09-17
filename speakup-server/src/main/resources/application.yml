@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: speakup-server
+  profiles:
+    active: dev
+
+server:
+  port: 8080
