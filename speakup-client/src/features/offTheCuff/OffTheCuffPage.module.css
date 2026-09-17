@@ -1,0 +1,40 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.title {
+  font-size: var(--font-size-3xl);
+  font-weight: 800;
+  text-align: center;
+}
+
+.subtitle {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  text-align: center;
+  margin-top: calc(-1 * var(--space-sm));
+}
+
+.categories {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+}
+
+.shuffleRow {
+  display: flex;
+  justify-content: center;
+}
+
+.error {
+  text-align: center;
+  color: var(--color-primary);
+  padding: var(--space-xl);
+  font-size: var(--font-size-sm);
+}

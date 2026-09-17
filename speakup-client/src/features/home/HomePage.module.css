@@ -1,0 +1,40 @@
+.page {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.hero {
+  text-align: center;
+  padding: var(--space-2xl) 0 var(--space-3xl);
+}
+
+.title {
+  font-size: var(--font-size-hero);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+
+.accent {
+  color: var(--color-primary);
+}
+
+.subtitle {
+  margin-top: var(--space-md);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+}
+
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
