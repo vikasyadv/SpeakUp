@@ -1,0 +1,31 @@
+.container {
+  position: relative;
+  width: 100%;
+  perspective: 1000px;
+}
+
+/* Decorative cards behind the main card to create deck effect */
+.deckCard {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  pointer-events: none;
+}
+
+.cardWrapper {
+  position: relative;
+  z-index: 2;
+  transform-origin: center center;
+}
+
+/* Exit animation: card flies off to the left with a slight rotation */
+.exit {
+  animation: cardExit 0.3s ease-in forwards;
+}
+
+/* Enter animation: card flies in from the right */
+.enter {
+  animation: cardEnter 0.4s ease-out forwards;
+}
