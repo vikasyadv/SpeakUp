@@ -1,0 +1,59 @@
+/* ── Card Shuffle: outgoing card ── */
+@keyframes cardExit {
+  0% {
+    transform: translateX(0) rotateZ(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-120%) rotateZ(-8deg);
+    opacity: 0;
+  }
+}
+
+/* ── Card Shuffle: incoming card ── */
+@keyframes cardEnter {
+  0% {
+    transform: translateX(120%) rotateZ(8deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) rotateZ(0deg);
+    opacity: 1;
+  }
+}
+
+/* ── Subtle fade in ── */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Mic pulse ── */
+@keyframes micPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--color-primary-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+
+/* ── Timer urgency pulse ── */
+@keyframes urgencyPulse {
+  0%, 100% {
+    color: var(--color-primary);
+  }
+  50% {
+    color: var(--color-primary-hover);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
