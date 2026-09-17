@@ -1,0 +1,25 @@
+# ─── OS ───
+.DS_Store
+Thumbs.db
+
+# ─── IDE ───
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# ─── Environment ───
+.env
+.env.local
+.env.*.local
+
+# ─── Frontend (speakup-client) ───
+speakup-client/node_modules/
+speakup-client/dist/
+speakup-client/.vite/
+
+# ─── Backend (speakup-server) ───
+speakup-server/target/
+speakup-server/.mvn/wrapper/maven-wrapper.jar
+speakup-server/*.log
