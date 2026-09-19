@@ -13,11 +13,25 @@ export default function Header() {
           <span className={styles.brandAccent}>Up</span>
         </Link>
 
-        {!isHome && (
-          <Link to="/" className={styles.backLink}>
-            ← Modes
+        <nav className={styles.nav}>
+          <Link
+            to="/bookshelf"
+            className={`${styles.navLink} ${location.pathname === '/bookshelf' ? styles.navActive : ''}`}
+          >
+            Bookshelf
           </Link>
-        )}
+          <Link
+            to="/history"
+            className={`${styles.navLink} ${location.pathname === '/history' ? styles.navActive : ''}`}
+          >
+            History
+          </Link>
+          {!isHome && (
+            <Link to="/" className={styles.backLink}>
+              ← Modes
+            </Link>
+          )}
+        </nav>
       </div>
     </header>
   )

@@ -6,6 +6,8 @@ import OffTheCuffPage from './features/offTheCuff/OffTheCuffPage'
 import ResearchPage from './features/research/ResearchPage'
 import DebatePage from './features/debate/DebatePage'
 import StoryPage from './features/story/StoryPage'
+import BookshelfPage from './features/bookshelf/BookshelfPage'
+import HistoryPage from './features/history/HistoryPage'
 
 export default function App() {
   return (
@@ -18,6 +20,8 @@ export default function App() {
           <Route path="/research" element={<ResearchPage />} />
           <Route path="/debate" element={<DebatePage />} />
           <Route path="/story" element={<StoryPage />} />
+          <Route path="/bookshelf" element={<BookshelfPage />} />
+          <Route path="/history" element={<HistoryPage />} />
         </Routes>
       </PageContainer>
     </>
