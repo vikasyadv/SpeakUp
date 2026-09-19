@@ -22,3 +22,9 @@ logging:
   level:
     com.speakup: DEBUG
     org.hibernate.SQL: DEBUG
+
+gemini:
+  api:
+    key: ${GEMINI_API_KEY:}
+    url: https://generativelanguage.googleapis.com/v1beta/models
+  model: gemini-3.6-flash
