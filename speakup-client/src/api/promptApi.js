@@ -16,10 +16,12 @@ export async function getRandomPrompt(mode = 'OFF_THE_CUFF', category = null, ex
 }
 
 /**
- * Fetch all categories.
+ * Fetch categories, optionally filtered by mode.
+ * @param {string|null} mode - e.g. 'RESEARCH' or 'OFF_THE_CUFF'
  */
-export async function getCategories() {
-  const response = await axiosClient.get('/prompts/categories')
+export async function getCategories(mode = null) {
+  const params = mode ? { mode } : {}
+  const response = await axiosClient.get('/prompts/categories', { params })
   return response.data
 }
 

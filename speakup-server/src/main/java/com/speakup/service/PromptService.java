@@ -65,4 +65,17 @@ public class PromptService {
                 .map(PromptMapper::toCategoryDto)
                 .toList();
     }
+
+    /**
+     * Get categories that have active prompts for the specified mode.
+     * If mode is null, falls back to returning all categories.
+     */
+    public List<CategoryDto> getCategories(Mode mode) {
+        if (mode == null) {
+            return getCategories();
+        }
+        return promptRepository.findDistinctCategoriesByMode(mode).stream()
+                .map(PromptMapper::toCategoryDto)
+                .toList();
+    }
 }

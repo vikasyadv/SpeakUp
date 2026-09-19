@@ -25,4 +25,6 @@ public class SessionDto {
     private Instant startedAt;
     private Instant completedAt;
     private Instant createdAt;
+    private String preparationNotes;
+    private Integer preparationDurationSeconds;
 }

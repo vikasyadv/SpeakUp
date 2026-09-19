@@ -11,8 +11,11 @@ import styles from './SpeakingResult.module.css'
 export default function SpeakingResult({
   sessionId,
   prompt,
+  mode,
   durationSeconds,
   actualDurationSeconds,
+  preparationDurationSeconds,
+  preparationNotes,
   transcript,
   onPracticeAgain,
   onBackToOffTheCuff,
@@ -21,6 +24,8 @@ export default function SpeakingResult({
   const [saved, setSaved] = useState(false)
   const [toggling, setToggling] = useState(false)
   const displayDuration = actualDurationSeconds ?? durationSeconds
+  const isResearch = mode === 'RESEARCH' || prompt?.mode === 'RESEARCH'
+  const backToModeLabel = isResearch ? 'Back to Research' : 'Back to Off the Cuff'
 
   useEffect(() => {
     if (!prompt?.id) return
@@ -86,11 +91,31 @@ export default function SpeakingResult({
           <span className={styles.statLabel}>Target Timer</span>
           <span className={styles.statValue}>{formatTime(durationSeconds)}</span>
         </div>
+        {(isResearch || preparationDurationSeconds != null) && (
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>Prep Time</span>
+            <span className={styles.statValue}>{formatTime(preparationDurationSeconds || 0)}</span>
+          </div>
+        )}
         <div className={styles.statCard}>
           <span className={styles.statLabel}>Status</span>
           <span className={styles.statusCompleted}>Completed</span>
         </div>
       </div>
+
+      {preparationNotes && (
+        <div className={styles.prepNotesCard}>
+          <div className={styles.prepNotesHeader}>
+            <span className={styles.prepNotesTitle}>Preparation Notes</span>
+            <span className={styles.prepNotesWordCount}>
+              {preparationNotes.trim().split(/\s+/).filter(Boolean).length} words
+            </span>
+          </div>
+          <div className={styles.prepNotesBody}>
+            <p className={styles.prepNotesText}>{preparationNotes}</p>
+          </div>
+        </div>
+      )}
 
       <div className={styles.transcriptCard}>
         <div className={styles.transcriptHeader}>
@@ -118,7 +143,7 @@ export default function SpeakingResult({
           Practice Again
         </Button>
         <Button variant="secondary" size="md" onClick={onBackToOffTheCuff}>
-          Back to Off the Cuff
+          {backToModeLabel}
         </Button>
         {onBackToModes && (
           <Button variant="ghost" size="md" onClick={onBackToModes}>

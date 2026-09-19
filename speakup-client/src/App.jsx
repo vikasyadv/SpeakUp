@@ -20,6 +20,7 @@ export default function App() {
           <Route path="/off-the-cuff" element={<OffTheCuffPage />} />
           <Route path="/off-the-cuff/session/:sessionId" element={<SpeakingResultPage />} />
           <Route path="/research" element={<ResearchPage />} />
+          <Route path="/research/session/:sessionId" element={<SpeakingResultPage />} />
           <Route path="/debate" element={<DebatePage />} />
           <Route path="/story" element={<StoryPage />} />
           <Route path="/bookshelf" element={<BookshelfPage />} />

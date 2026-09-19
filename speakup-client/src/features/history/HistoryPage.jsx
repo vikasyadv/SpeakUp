@@ -102,12 +102,21 @@ export default function HistoryPage() {
             const hasTranscript = Boolean(session.transcript)
             const isExpanded = Boolean(expandedTranscripts[session.id])
             const speakingDuration = session.actualDurationSeconds ?? session.durationSeconds
+            const isResearch = session.mode === 'RESEARCH'
+            const sessionPath = isResearch
+              ? `/research/session/${session.id}`
+              : `/off-the-cuff/session/${session.id}`
 
             return (
               <div key={session.id} className={styles.card}>
                 <div className={styles.cardMain}>
                   <div className={styles.topRow}>
-                    <span className={styles.mode}>{session.mode.replace(/_/g, ' ')}</span>
+                    <span className={`${styles.mode} ${isResearch ? styles.modeResearch : styles.modeOffTheCuff}`}>
+                      {isResearch ? 'Research' : 'Off the Cuff'}
+                    </span>
+                    {session.category && (
+                      <span className={styles.categoryBadge}>{session.category}</span>
+                    )}
                     <span className={`${styles.status} ${getStatusClass(session.status)}`}>
                       {getStatusLabel(session.status)}
                     </span>
@@ -125,6 +134,22 @@ export default function HistoryPage() {
                           </span>
                         )}
                     </span>
+                    {isResearch && session.preparationDurationSeconds != null && (
+                      <>
+                        <span className={styles.separator}>·</span>
+                        <span className={styles.prepDuration} title="Preparation Time">
+                          Prep: {formatTime(session.preparationDurationSeconds)}
+                        </span>
+                      </>
+                    )}
+                    {session.preparationNotes && (
+                      <>
+                        <span className={styles.separator}>·</span>
+                        <span className={styles.notesIndicator} title="Includes preparation notes">
+                          📝 Notes
+                        </span>
+                      </>
+                    )}
                     <span className={styles.separator}>·</span>
                     <span className={styles.date}>{formatDate(session.startedAt)}</span>
                     <span className={styles.time}>{formatTimeOfDay(session.startedAt)}</span>
@@ -135,7 +160,7 @@ export default function HistoryPage() {
                       {session.hasFeedback ? (
                         <button
                           className={styles.feedbackBadgeBtn}
-                          onClick={() => navigate(`/off-the-cuff/session/${session.id}`)}
+                          onClick={() => navigate(sessionPath)}
                           title="View AI Speaking Feedback"
                         >
                           <span className={styles.feedbackIcon}>✦</span> AI Feedback
@@ -143,7 +168,7 @@ export default function HistoryPage() {
                       ) : (
                         <button
                           className={styles.getFeedbackBtn}
-                          onClick={() => navigate(`/off-the-cuff/session/${session.id}`)}
+                          onClick={() => navigate(sessionPath)}
                           title="Review session and get AI feedback"
                         >
                           Get AI Feedback →

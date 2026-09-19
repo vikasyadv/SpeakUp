@@ -84,6 +84,12 @@ public class SessionService {
             } else {
                 session.setActualDurationSeconds(session.getDurationSeconds());
             }
+            if (dto.getPreparationNotes() != null) {
+                session.setPreparationNotes(dto.getPreparationNotes().trim());
+            }
+            if (dto.getPreparationDurationSeconds() != null) {
+                session.setPreparationDurationSeconds(dto.getPreparationDurationSeconds());
+            }
         } else {
             session.setActualDurationSeconds(session.getDurationSeconds());
         }

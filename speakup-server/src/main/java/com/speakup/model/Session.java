@@ -49,6 +49,12 @@ public class Session {
     @Column(columnDefinition = "LONGTEXT")
     private String transcript;
 
+    @Column(columnDefinition = "TEXT")
+    private String preparationNotes;
+
+    @Column(name = "preparation_duration_seconds")
+    private Integer preparationDurationSeconds;
+
     @Column(name = "started_at", nullable = false)
     private Instant startedAt;
 

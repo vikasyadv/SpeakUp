@@ -46,13 +46,25 @@ public class GeminiSpeakingCoachClient implements AiSpeakingCoachClient {
             int targetDurationSeconds,
             int actualDurationSeconds,
             String transcript) {
+        return analyzeSpeaking(mode, topic, category, targetDurationSeconds, actualDurationSeconds, transcript, null);
+    }
+
+    @Override
+    public AiFeedbackResponse analyzeSpeaking(
+            String mode,
+            String topic,
+            String category,
+            int targetDurationSeconds,
+            int actualDurationSeconds,
+            String transcript,
+            String preparationNotes) {
 
         if (apiKey.isEmpty()) {
             throw new AiServiceException("Gemini API key is not configured on the server");
         }
 
         String systemPrompt = buildSystemPrompt();
-        String userPrompt = buildUserPrompt(mode, topic, category, targetDurationSeconds, actualDurationSeconds, transcript);
+        String userPrompt = buildUserPrompt(mode, topic, category, targetDurationSeconds, actualDurationSeconds, transcript, preparationNotes);
 
         log.info("Requesting Gemini AI analysis for topic: '{}', mode: '{}'", topic, mode);
 
@@ -109,13 +121,14 @@ public class GeminiSpeakingCoachClient implements AiSpeakingCoachClient {
                 Your role is to give supportive, concise, and highly actionable practice feedback based on a speech transcript.
 
                 CRITICAL GUIDELINES:
-                1. You only have access to the transcript text, speaking duration, and prompt topic.
+                1. You only have access to the transcript text, speaking duration, prompt topic, and optional preparation notes.
                 2. Do NOT evaluate or claim to measure vocal tone, volume, pronunciation, body language, facial expression, eye contact, microphone quality, emotional state, or precise speaking speed.
                 3. Focus exclusively on:
                    - Clarity (conciseness, word choice, clarity of thought)
-                   - Relevance (how well the speaker addressed the specific topic)
+                   - Relevance (how well the speaker addressed the specific topic or research question)
                    - Structure (introduction/hook, logical progression, conclusion)
                    - Overall effectiveness
+                   - For Research mode sessions: evaluate how clearly the speaker answered the research question, whether the explanation was well-organized and supported by evidence or examples reflected in the transcript, and how effectively any preparation notes were developed into the spoken response.
                 4. Give constructive, encouraging, and specific feedback. Avoid generic filler.
                 5. Scores MUST be integers between 1 and 10 (1 = poor, 10 = exceptional).
 
@@ -144,28 +157,21 @@ public class GeminiSpeakingCoachClient implements AiSpeakingCoachClient {
             String category,
             int targetDurationSeconds,
             int actualDurationSeconds,
-            String transcript) {
+            String transcript,
+            String preparationNotes) {
 
-        return String.format("""
-                Please evaluate the following speaking practice session:
-
-                - Mode: %s
-                - Topic: %s
-                - Category: %s
-                - Target Duration: %d seconds
-                - Actual Duration: %d seconds
-                - Transcript:
-                \"\"\"
-                %s
-                \"\"\"
-                """,
-                mode != null ? mode : "OFF_THE_CUFF",
-                topic != null ? topic : "Unknown",
-                category != null ? category : "General",
-                targetDurationSeconds,
-                actualDurationSeconds,
-                transcript != null ? transcript.trim() : ""
-        );
+        StringBuilder sb = new StringBuilder();
+        sb.append("Please evaluate the following speaking practice session:\n\n");
+        sb.append(String.format("- Mode: %s\n", mode != null ? mode : "OFF_THE_CUFF"));
+        sb.append(String.format("- Topic: %s\n", topic != null ? topic : "Unknown"));
+        sb.append(String.format("- Category: %s\n", category != null ? category : "General"));
+        sb.append(String.format("- Target Duration: %d seconds\n", targetDurationSeconds));
+        sb.append(String.format("- Actual Duration: %d seconds\n", actualDurationSeconds));
+        if (preparationNotes != null && !preparationNotes.isBlank()) {
+            sb.append(String.format("- Preparation Notes:\n\"\"\"\n%s\n\"\"\"\n", preparationNotes.trim()));
+        }
+        sb.append(String.format("- Transcript:\n\"\"\"\n%s\n\"\"\"\n", transcript != null ? transcript.trim() : ""));
+        return sb.toString();
     }
 
     private AiFeedbackResponse parseGeminiResponse(String responseJson) {

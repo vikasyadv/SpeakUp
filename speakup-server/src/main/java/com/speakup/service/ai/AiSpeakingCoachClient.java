@@ -21,4 +21,19 @@ public interface AiSpeakingCoachClient {
             int actualDurationSeconds,
             String transcript
     );
+
+    /**
+     * Analyze a completed speaking session transcript with optional preparation notes.
+     */
+    default AiFeedbackResponse analyzeSpeaking(
+            String mode,
+            String topic,
+            String category,
+            int targetDurationSeconds,
+            int actualDurationSeconds,
+            String transcript,
+            String preparationNotes
+    ) {
+        return analyzeSpeaking(mode, topic, category, targetDurationSeconds, actualDurationSeconds, transcript);
+    }
 }

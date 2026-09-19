@@ -32,7 +32,9 @@ public class SessionMapper {
                 hasFeedback,
                 session.getStartedAt(),
                 session.getCompletedAt(),
-                session.getCreatedAt()
+                session.getCreatedAt(),
+                session.getPreparationNotes(),
+                session.getPreparationDurationSeconds()
         );
     }
 }

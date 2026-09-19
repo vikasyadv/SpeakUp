@@ -86,7 +86,8 @@ public class FeedbackService {
                 categoryName,
                 session.getDurationSeconds(),
                 actualDuration,
-                transcript
+                transcript,
+                session.getPreparationNotes()
         );
 
         // Build and persist Feedback entity

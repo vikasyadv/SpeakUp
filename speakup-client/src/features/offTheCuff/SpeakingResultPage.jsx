@@ -69,6 +69,10 @@ export default function SpeakingResultPage() {
     )
   }
 
+  const isResearch = session?.mode === 'RESEARCH'
+  const modePath = isResearch ? '/research' : '/off-the-cuff'
+  const modeLabel = isResearch ? 'Research' : 'Off the Cuff'
+
   if (error && (!session || session.status !== 'COMPLETED')) {
     return (
       <div className={styles.page}>
@@ -76,8 +80,8 @@ export default function SpeakingResultPage() {
           <h2 className={styles.errorTitle}>Session Unavailable</h2>
           <p className={styles.errorMessage}>{error}</p>
           <div className={styles.actionRow}>
-            <Button variant="primary" size="md" onClick={() => navigate('/off-the-cuff')}>
-              Go to Off the Cuff
+            <Button variant="primary" size="md" onClick={() => navigate(modePath)}>
+              Go to {modeLabel}
             </Button>
             <Button variant="ghost" size="md" onClick={() => navigate('/history')}>
               View History
@@ -96,12 +100,16 @@ export default function SpeakingResultPage() {
           id: session.promptId,
           text: session.promptText,
           category: session.category || 'General',
+          mode: session.mode,
         }}
+        mode={session.mode}
         durationSeconds={session.durationSeconds}
         actualDurationSeconds={session.actualDurationSeconds}
+        preparationDurationSeconds={session.preparationDurationSeconds}
+        preparationNotes={session.preparationNotes}
         transcript={session.transcript}
-        onPracticeAgain={() => navigate('/off-the-cuff')}
-        onBackToOffTheCuff={() => navigate('/off-the-cuff')}
+        onPracticeAgain={() => navigate(modePath)}
+        onBackToOffTheCuff={() => navigate(modePath)}
         onBackToModes={() => navigate('/')}
       />
     </div>

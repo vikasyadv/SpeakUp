@@ -57,10 +57,33 @@
 
 .mode {
   font-size: var(--font-size-xs);
-  color: var(--color-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-weight: 600;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.modeResearch {
+  color: #38bdf8;
+  background-color: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.modeOffTheCuff {
+  color: var(--color-primary);
+  background-color: var(--color-primary-glow);
+  border: 1px solid var(--color-primary-muted);
+}
+
+.categoryBadge {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
 }
 
 .status {
@@ -111,6 +134,22 @@
 
 .duration {
   font-variant-numeric: tabular-nums;
+}
+
+.prepDuration {
+  color: #38bdf8;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.notesIndicator {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  font-weight: 600;
+  background-color: var(--color-primary-glow);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
 }
 
 .transcriptSection {

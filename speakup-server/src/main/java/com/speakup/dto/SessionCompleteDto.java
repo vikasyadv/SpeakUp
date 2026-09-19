@@ -12,4 +12,11 @@ import lombok.Setter;
 public class SessionCompleteDto {
     private String transcript;
     private Integer actualDurationSeconds;
+    private String preparationNotes;
+    private Integer preparationDurationSeconds;
+
+    public SessionCompleteDto(String transcript, Integer actualDurationSeconds) {
+        this.transcript = transcript;
+        this.actualDurationSeconds = actualDurationSeconds;
+    }
 }

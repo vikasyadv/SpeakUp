@@ -34,7 +34,11 @@ export default function BookshelfPage() {
   }
 
   function handlePractice(bookmark) {
-    navigate('/off-the-cuff', { state: { prompt: bookmark.prompt } })
+    if (bookmark.prompt?.mode === 'RESEARCH') {
+      navigate('/research', { state: { prompt: bookmark.prompt } })
+    } else {
+      navigate('/off-the-cuff', { state: { prompt: bookmark.prompt } })
+    }
   }
 
   if (loading) {
@@ -57,30 +61,38 @@ export default function BookshelfPage() {
 
       {bookmarks.length > 0 && (
         <div className={styles.list}>
-          {bookmarks.map((bookmark) => (
-            <div key={bookmark.id} className={styles.card}>
-              <div className={styles.cardContent}>
-                <span className={styles.category}>{bookmark.prompt.category}</span>
-                <p className={styles.text}>{bookmark.prompt.text}</p>
+          {bookmarks.map((bookmark) => {
+            const isResearch = bookmark.prompt?.mode === 'RESEARCH'
+            return (
+              <div key={bookmark.id} className={styles.card}>
+                <div className={styles.cardContent}>
+                  <div className={styles.cardHeader}>
+                    <span className={styles.category}>{bookmark.prompt.category}</span>
+                    <span className={`${styles.modeBadge} ${isResearch ? styles.modeResearch : styles.modeOffTheCuff}`}>
+                      {isResearch ? 'Research' : 'Off the Cuff'}
+                    </span>
+                  </div>
+                  <p className={styles.text}>{bookmark.prompt.text}</p>
+                </div>
+                <div className={styles.cardActions}>
+                  <button
+                    className={styles.practiceBtn}
+                    onClick={() => handlePractice(bookmark)}
+                    title="Practice this topic"
+                  >
+                    Speak
+                  </button>
+                  <button
+                    className={styles.removeBtn}
+                    onClick={() => handleRemove(bookmark.prompt.id)}
+                    title="Remove bookmark"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
-              <div className={styles.cardActions}>
-                <button
-                  className={styles.practiceBtn}
-                  onClick={() => handlePractice(bookmark)}
-                  title="Practice this topic"
-                >
-                  Speak
-                </button>
-                <button
-                  className={styles.removeBtn}
-                  onClick={() => handleRemove(bookmark.prompt.id)}
-                  title="Remove bookmark"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

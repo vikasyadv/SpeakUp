@@ -36,7 +36,13 @@ public class PromptController {
     }
 
     @GetMapping("/categories")
-    public ResponseEntity<List<CategoryDto>> getCategories() {
-        return ResponseEntity.ok(promptService.getCategories());
+    public ResponseEntity<List<CategoryDto>> getCategories(
+            @RequestParam(required = false) String mode) {
+
+        if (mode != null && !mode.isBlank()) {
+            Mode modeEnum = Mode.valueOf(mode.toUpperCase());
+            return ResponseEntity.ok(promptService.getCategories(modeEnum));
+        }
+        return ResponseEntity.ok(promptService.getCategories(Mode.OFF_THE_CUFF));
     }
 }

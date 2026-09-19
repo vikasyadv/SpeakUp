@@ -154,6 +154,40 @@ class SessionServiceTest {
     }
 
     @Test
+    void completeSession_withPreparationNotesAndDuration_savesAndReturnsBoth() {
+        Session completedSession = new Session();
+        completedSession.setId(1L);
+        completedSession.setPromptText("How will AI transform healthcare?");
+        completedSession.setMode(Mode.RESEARCH);
+        completedSession.setDurationSeconds(120);
+        completedSession.setActualDurationSeconds(115);
+        completedSession.setTranscript("AI enables earlier diagnosis and personalized medicine.");
+        completedSession.setPreparationNotes("Key points: 1. Diagnostics 2. Personalized therapy");
+        completedSession.setPreparationDurationSeconds(300);
+        completedSession.setStatus(SessionStatus.COMPLETED);
+        completedSession.setStartedAt(Instant.now());
+        completedSession.setCompletedAt(Instant.now());
+        completedSession.setCreatedAt(Instant.now());
+
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(sampleSession));
+        when(sessionRepository.save(any(Session.class))).thenReturn(completedSession);
+
+        SessionCompleteDto dto = new SessionCompleteDto(
+                "  AI enables earlier diagnosis and personalized medicine.  ",
+                115,
+                "  Key points: 1. Diagnostics 2. Personalized therapy  ",
+                300
+        );
+        SessionDto result = sessionService.completeSession(1L, dto);
+
+        assertEquals("COMPLETED", result.getStatus());
+        assertEquals(115, result.getActualDurationSeconds());
+        assertEquals("AI enables earlier diagnosis and personalized medicine.", result.getTranscript());
+        assertEquals("Key points: 1. Diagnostics 2. Personalized therapy", result.getPreparationNotes());
+        assertEquals(300, result.getPreparationDurationSeconds());
+    }
+
+    @Test
     void completeSession_throwsWhenNotFound() {
         when(sessionRepository.findById(99L)).thenReturn(Optional.empty());
 

@@ -163,6 +163,53 @@
   text-align: center;
 }
 
+.prepNotesCard {
+  width: 100%;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border-left: 3px solid var(--color-primary);
+}
+
+.prepNotesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.prepNotesTitle {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-primary);
+}
+
+.prepNotesWordCount {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.prepNotesBody {
+  padding: var(--space-md) var(--space-lg);
+  max-height: 180px;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.prepNotesText {
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .actions {
   display: flex;
   gap: var(--space-md);

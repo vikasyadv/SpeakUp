@@ -81,7 +81,7 @@ class FeedbackServiceTest {
     void generateOrGetFeedback_completedSessionWithValidTranscript_callsAiAndPersistsFeedback() {
         when(sessionRepository.findById(10L)).thenReturn(Optional.of(completedSession));
         when(feedbackRepository.findBySessionId(10L)).thenReturn(Optional.empty());
-        when(aiSpeakingCoachClient.analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any()))
+        when(aiSpeakingCoachClient.analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any(), any()))
                 .thenReturn(sampleAiResponse);
 
         Feedback savedEntity = new Feedback();
@@ -108,7 +108,7 @@ class FeedbackServiceTest {
         assertEquals(2, result.getStrengths().size());
         assertEquals(2, result.getImprovements().size());
 
-        verify(aiSpeakingCoachClient, times(1)).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any());
+        verify(aiSpeakingCoachClient, times(1)).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any(), any());
         verify(feedbackRepository, times(1)).save(any(Feedback.class));
     }
 
@@ -117,7 +117,7 @@ class FeedbackServiceTest {
         when(sessionRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> feedbackService.generateOrGetFeedback(99L));
-        verify(aiSpeakingCoachClient, never()).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any());
+        verify(aiSpeakingCoachClient, never()).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any(), any());
     }
 
     @Test
@@ -129,7 +129,7 @@ class FeedbackServiceTest {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> feedbackService.generateOrGetFeedback(10L));
         assertTrue(ex.getMessage().contains("completed"));
-        verify(aiSpeakingCoachClient, never()).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any());
+        verify(aiSpeakingCoachClient, never()).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any(), any());
     }
 
     @Test
@@ -141,7 +141,7 @@ class FeedbackServiceTest {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> feedbackService.generateOrGetFeedback(10L));
         assertTrue(ex.getMessage().contains("empty"));
-        verify(aiSpeakingCoachClient, never()).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any());
+        verify(aiSpeakingCoachClient, never()).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any(), any());
     }
 
     @Test
@@ -153,14 +153,14 @@ class FeedbackServiceTest {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> feedbackService.generateOrGetFeedback(10L));
         assertTrue(ex.getMessage().contains("too short"));
-        verify(aiSpeakingCoachClient, never()).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any());
+        verify(aiSpeakingCoachClient, never()).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any(), any());
     }
 
     @Test
     void generateOrGetFeedback_geminiClientFailure_propagatesException() {
         when(sessionRepository.findById(10L)).thenReturn(Optional.of(completedSession));
         when(feedbackRepository.findBySessionId(10L)).thenReturn(Optional.empty());
-        when(aiSpeakingCoachClient.analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any()))
+        when(aiSpeakingCoachClient.analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any(), any()))
                 .thenThrow(new AiServiceException("Gemini quota exceeded"));
 
         assertThrows(AiServiceException.class, () -> feedbackService.generateOrGetFeedback(10L));
@@ -191,7 +191,7 @@ class FeedbackServiceTest {
         assertEquals("Cached assessment", result.getSummary());
 
         // ZERO calls to AI client
-        verify(aiSpeakingCoachClient, never()).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any());
+        verify(aiSpeakingCoachClient, never()).analyzeSpeaking(any(), any(), any(), anyInt(), anyInt(), any(), any());
         verify(feedbackRepository, never()).save(any());
     }
 
@@ -224,5 +224,51 @@ class FeedbackServiceTest {
         when(feedbackRepository.findBySessionId(10L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> feedbackService.getFeedbackBySessionId(10L));
+    }
+
+    @Test
+    void generateOrGetFeedback_researchSessionWithPreparationNotes_passesNotesToAi() {
+        completedSession.setMode(Mode.RESEARCH);
+        completedSession.setPreparationNotes("1. Main thesis on AI in medicine.\n2. Evidence from radiological diagnostics.");
+        completedSession.setPreparationDurationSeconds(180);
+
+        when(sessionRepository.findById(10L)).thenReturn(Optional.of(completedSession));
+        when(feedbackRepository.findBySessionId(10L)).thenReturn(Optional.empty());
+        when(aiSpeakingCoachClient.analyzeSpeaking(
+                eq("RESEARCH"),
+                eq("Artificial Intelligence"),
+                eq("Technology"),
+                eq(60),
+                eq(45),
+                eq(completedSession.getTranscript()),
+                eq("1. Main thesis on AI in medicine.\n2. Evidence from radiological diagnostics.")
+        )).thenReturn(sampleAiResponse);
+
+        Feedback savedEntity = new Feedback();
+        savedEntity.setId(101L);
+        savedEntity.setSession(completedSession);
+        savedEntity.setOverallScore(8);
+        savedEntity.setClarityScore(9);
+        savedEntity.setRelevanceScore(8);
+        savedEntity.setStructureScore(7);
+        savedEntity.setSummary("Strong clear speech with direct relevance to the topic.");
+        savedEntity.setStrengths("[\"Direct answer\",\"Clear vocabulary\"]");
+        savedEntity.setImprovements("[\"Add a concrete example\",\"Structure a stronger conclusion\"]");
+        savedEntity.setCreatedAt(Instant.now());
+
+        when(feedbackRepository.save(any(Feedback.class))).thenReturn(savedEntity);
+
+        FeedbackDto result = feedbackService.generateOrGetFeedback(10L);
+
+        assertNotNull(result);
+        verify(aiSpeakingCoachClient).analyzeSpeaking(
+                eq("RESEARCH"),
+                eq("Artificial Intelligence"),
+                eq("Technology"),
+                eq(60),
+                eq(45),
+                anyString(),
+                eq("1. Main thesis on AI in medicine.\n2. Evidence from radiological diagnostics.")
+        );
     }
 }
