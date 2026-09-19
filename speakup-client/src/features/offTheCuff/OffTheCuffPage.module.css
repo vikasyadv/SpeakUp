@@ -25,6 +25,12 @@
   justify-content: center;
   gap: var(--space-sm);
   padding: var(--space-sm) 0;
+  transition: opacity var(--transition-fast);
+}
+
+.categoriesDisabled {
+  opacity: 0.35;
+  pointer-events: none;
 }
 
 .shuffleRow {

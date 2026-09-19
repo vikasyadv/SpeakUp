@@ -1,5 +1,6 @@
 package com.speakup.controller;
 
+import com.speakup.dto.SessionCompleteDto;
 import com.speakup.dto.SessionCreateDto;
 import com.speakup.dto.SessionDto;
 import com.speakup.service.SessionService;
@@ -27,8 +28,10 @@ public class SessionController {
     }
 
     @PatchMapping("/{id}/complete")
-    public ResponseEntity<SessionDto> completeSession(@PathVariable Long id) {
-        return ResponseEntity.ok(sessionService.completeSession(id));
+    public ResponseEntity<SessionDto> completeSession(
+            @PathVariable Long id,
+            @RequestBody(required = false) SessionCompleteDto dto) {
+        return ResponseEntity.ok(sessionService.completeSession(id, dto));
     }
 
     @PatchMapping("/{id}/abandon")

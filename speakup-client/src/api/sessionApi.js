@@ -15,9 +15,11 @@ export async function createSession({ promptText, promptId, mode, durationSecond
 
 /**
  * Mark a session as completed.
+ * @param {number|string} sessionId
+ * @param {{ transcript?: string, actualDurationSeconds?: number }} [payload]
  */
-export async function completeSession(sessionId) {
-  const response = await axiosClient.patch(`/sessions/${sessionId}/complete`)
+export async function completeSession(sessionId, payload) {
+  const response = await axiosClient.patch(`/sessions/${sessionId}/complete`, payload)
   return response.data
 }
 

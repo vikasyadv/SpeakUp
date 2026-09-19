@@ -17,6 +17,8 @@ public class SessionDto {
     private Long promptId;
     private String mode;
     private Integer durationSeconds;
+    private Integer actualDurationSeconds;
+    private String transcript;
     private String status;
     private Instant startedAt;
     private Instant completedAt;

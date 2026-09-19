@@ -43,6 +43,12 @@ public class Session {
     @Column(nullable = false, length = 20)
     private SessionStatus status = SessionStatus.IN_PROGRESS;
 
+    @Column(name = "actual_duration_seconds")
+    private Integer actualDurationSeconds;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String transcript;
+
     @Column(name = "started_at", nullable = false)
     private Instant startedAt;
 
