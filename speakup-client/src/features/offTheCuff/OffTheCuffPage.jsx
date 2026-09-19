@@ -1,24 +1,33 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import PromptShuffle from '../../components/prompt/PromptShuffle'
 import CategoryBadge from '../../components/prompt/CategoryBadge'
 import SpeakingTimer from '../../components/timer/SpeakingTimer'
 import TimerControls from '../../components/timer/TimerControls'
 import Button from '../../components/common/Button'
 import { getRandomPrompt, getCategories } from '../../api/promptApi'
+import { createSession, completeSession } from '../../api/sessionApi'
 import useTimer from '../../hooks/useTimer'
 import { TIMER_OPTIONS } from '../../utils/constants'
 import styles from './OffTheCuffPage.module.css'
 
 export default function OffTheCuffPage() {
+  const location = useLocation()
   const [prompt, setPrompt] = useState(null)
   const [categories, setCategories] = useState([])
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [selectedDuration, setSelectedDuration] = useState(60)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const sessionIdRef = useRef(null)
 
   const handleTimerComplete = useCallback(() => {
-    // Timer finished — session complete
+    // Complete the session when timer finishes
+    if (sessionIdRef.current) {
+      completeSession(sessionIdRef.current)
+        .then(() => { sessionIdRef.current = null })
+        .catch((err) => console.error('Failed to complete session:', err))
+    }
   }, [])
 
   const { timeLeft, isRunning, isComplete, start, pause, reset } = useTimer(
@@ -33,9 +42,16 @@ export default function OffTheCuffPage() {
       .catch((err) => console.error('Failed to load categories:', err))
   }, [])
 
-  // Fetch initial prompt
+  // Load initial prompt — from navigation state (Bookshelf) or fetch random
   useEffect(() => {
-    fetchPrompt()
+    if (location.state?.prompt) {
+      setPrompt(location.state.prompt)
+      setLoading(false)
+      // Clear the navigation state so refreshing doesn't reload the same prompt
+      window.history.replaceState({}, document.title)
+    } else {
+      fetchPrompt()
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchPrompt(category = selectedCategory, excludeId = null) {
@@ -67,7 +83,26 @@ export default function OffTheCuffPage() {
     reset(duration)
   }
 
+  async function handleStart() {
+    // Create a session, then start the timer
+    if (prompt) {
+      try {
+        const session = await createSession({
+          promptText: prompt.text,
+          promptId: prompt.id,
+          mode: 'OFF_THE_CUFF',
+          durationSeconds: selectedDuration,
+        })
+        sessionIdRef.current = session.id
+      } catch (err) {
+        console.error('Failed to create session:', err)
+      }
+    }
+    start()
+  }
+
   function handleReset() {
+    sessionIdRef.current = null
     reset(selectedDuration)
   }
 
@@ -115,14 +150,14 @@ export default function OffTheCuffPage() {
       {/* Timer */}
       <SpeakingTimer timeLeft={timeLeft} isRunning={isRunning} isComplete={isComplete} />
 
-      {/* Timer controls */}
+      {/* Timer controls — uses handleStart to create session */}
       <TimerControls
         durations={TIMER_OPTIONS}
         selectedDuration={selectedDuration}
         onSelectDuration={handleSelectDuration}
         isRunning={isRunning}
         isComplete={isComplete}
-        onStart={start}
+        onStart={handleStart}
         onPause={pause}
         onReset={handleReset}
       />

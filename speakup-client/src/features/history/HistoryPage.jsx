@@ -1,0 +1,121 @@
+import { useState, useEffect } from 'react'
+import { getRecentSessions, deleteSession } from '../../api/sessionApi'
+import { formatTime } from '../../utils/formatTime'
+import styles from './HistoryPage.module.css'
+
+export default function HistoryPage() {
+  const [sessions, setSessions] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchSessions()
+  }, [])
+
+  async function fetchSessions() {
+    setLoading(true)
+    try {
+      const data = await getRecentSessions()
+      setSessions(data)
+    } catch (err) {
+      console.error('Failed to load sessions:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDelete(sessionId) {
+    try {
+      await deleteSession(sessionId)
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId))
+    } catch (err) {
+      console.error('Failed to delete session:', err)
+    }
+  }
+
+  function formatDate(isoString) {
+    if (!isoString) return '—'
+    const date = new Date(isoString)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
+
+  function formatTimeOfDay(isoString) {
+    if (!isoString) return ''
+    const date = new Date(isoString)
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  function getStatusLabel(status) {
+    switch (status) {
+      case 'COMPLETED': return 'Completed'
+      case 'IN_PROGRESS': return 'In Progress'
+      case 'ABANDONED': return 'Abandoned'
+      default: return status
+    }
+  }
+
+  function getStatusClass(status) {
+    switch (status) {
+      case 'COMPLETED': return styles.statusCompleted
+      case 'ABANDONED': return styles.statusAbandoned
+      default: return styles.statusProgress
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <h1 className={styles.title}>History</h1>
+        <p className={styles.subtitle}>Loading your sessions…</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.page}>
+      <h1 className={styles.title}>History</h1>
+      <p className={styles.subtitle}>
+        {sessions.length === 0
+          ? 'No sessions yet. Start speaking to build your history.'
+          : `${sessions.length} recent session${sessions.length !== 1 ? 's' : ''}`}
+      </p>
+
+      {sessions.length > 0 && (
+        <div className={styles.list}>
+          {sessions.map((session) => (
+            <div key={session.id} className={styles.card}>
+              <div className={styles.cardMain}>
+                <div className={styles.topRow}>
+                  <span className={styles.mode}>{session.mode.replace(/_/g, ' ')}</span>
+                  <span className={`${styles.status} ${getStatusClass(session.status)}`}>
+                    {getStatusLabel(session.status)}
+                  </span>
+                </div>
+                <p className={styles.promptText}>{session.promptText}</p>
+                <div className={styles.meta}>
+                  <span className={styles.duration}>{formatTime(session.durationSeconds)}</span>
+                  <span className={styles.separator}>·</span>
+                  <span className={styles.date}>{formatDate(session.startedAt)}</span>
+                  <span className={styles.time}>{formatTimeOfDay(session.startedAt)}</span>
+                </div>
+              </div>
+              <button
+                className={styles.deleteBtn}
+                onClick={() => handleDelete(session.id)}
+                title="Delete session"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
