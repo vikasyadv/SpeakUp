@@ -1,5 +1,6 @@
 package com.speakup.service;
 
+import com.speakup.dto.SessionCompleteDto;
 import com.speakup.dto.SessionCreateDto;
 import com.speakup.dto.SessionDto;
 import com.speakup.exception.ResourceNotFoundException;
@@ -105,6 +106,7 @@ class SessionServiceTest {
         completedSession.setPromptText("Artificial Intelligence");
         completedSession.setMode(Mode.OFF_THE_CUFF);
         completedSession.setDurationSeconds(60);
+        completedSession.setActualDurationSeconds(60);
         completedSession.setStatus(SessionStatus.COMPLETED);
         completedSession.setStartedAt(Instant.now());
         completedSession.setCompletedAt(Instant.now());
@@ -117,6 +119,33 @@ class SessionServiceTest {
 
         assertEquals("COMPLETED", result.getStatus());
         assertNotNull(result.getCompletedAt());
+        assertEquals(60, result.getActualDurationSeconds());
+    }
+
+    @Test
+    void completeSession_withTranscriptAndActualDuration_savesAndReturnsBoth() {
+        Session completedSession = new Session();
+        completedSession.setId(1L);
+        completedSession.setPromptText("Artificial Intelligence");
+        completedSession.setMode(Mode.OFF_THE_CUFF);
+        completedSession.setDurationSeconds(60);
+        completedSession.setActualDurationSeconds(42);
+        completedSession.setTranscript("Artificial intelligence is transforming industries.");
+        completedSession.setStatus(SessionStatus.COMPLETED);
+        completedSession.setStartedAt(Instant.now());
+        completedSession.setCompletedAt(Instant.now());
+        completedSession.setCreatedAt(Instant.now());
+
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(sampleSession));
+        when(sessionRepository.save(any(Session.class))).thenReturn(completedSession);
+
+        SessionCompleteDto dto = new SessionCompleteDto("  Artificial intelligence is transforming industries.  ", 42);
+        SessionDto result = sessionService.completeSession(1L, dto);
+
+        assertEquals("COMPLETED", result.getStatus());
+        assertNotNull(result.getCompletedAt());
+        assertEquals(42, result.getActualDurationSeconds());
+        assertEquals("Artificial intelligence is transforming industries.", result.getTranscript());
     }
 
     @Test

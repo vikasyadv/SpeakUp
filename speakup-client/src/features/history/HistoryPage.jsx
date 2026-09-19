@@ -6,6 +6,7 @@ import styles from './HistoryPage.module.css'
 export default function HistoryPage() {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [expandedTranscripts, setExpandedTranscripts] = useState({})
 
   useEffect(() => {
     fetchSessions()
@@ -30,6 +31,13 @@ export default function HistoryPage() {
     } catch (err) {
       console.error('Failed to delete session:', err)
     }
+  }
+
+  function toggleTranscript(sessionId) {
+    setExpandedTranscripts((prev) => ({
+      ...prev,
+      [sessionId]: !prev[sessionId],
+    }))
   }
 
   function formatDate(isoString) {
@@ -88,32 +96,66 @@ export default function HistoryPage() {
 
       {sessions.length > 0 && (
         <div className={styles.list}>
-          {sessions.map((session) => (
-            <div key={session.id} className={styles.card}>
-              <div className={styles.cardMain}>
-                <div className={styles.topRow}>
-                  <span className={styles.mode}>{session.mode.replace(/_/g, ' ')}</span>
-                  <span className={`${styles.status} ${getStatusClass(session.status)}`}>
-                    {getStatusLabel(session.status)}
-                  </span>
+          {sessions.map((session) => {
+            const hasTranscript = Boolean(session.transcript)
+            const isExpanded = Boolean(expandedTranscripts[session.id])
+            const speakingDuration = session.actualDurationSeconds ?? session.durationSeconds
+
+            return (
+              <div key={session.id} className={styles.card}>
+                <div className={styles.cardMain}>
+                  <div className={styles.topRow}>
+                    <span className={styles.mode}>{session.mode.replace(/_/g, ' ')}</span>
+                    <span className={`${styles.status} ${getStatusClass(session.status)}`}>
+                      {getStatusLabel(session.status)}
+                    </span>
+                  </div>
+
+                  <p className={styles.promptText}>{session.promptText}</p>
+
+                  <div className={styles.meta}>
+                    <span className={styles.duration} title="Speaking Duration">
+                      {formatTime(speakingDuration)}
+                      {session.actualDurationSeconds &&
+                        session.actualDurationSeconds !== session.durationSeconds && (
+                          <span className={styles.targetDuration}>
+                            {' '}/ {formatTime(session.durationSeconds)}
+                          </span>
+                        )}
+                    </span>
+                    <span className={styles.separator}>·</span>
+                    <span className={styles.date}>{formatDate(session.startedAt)}</span>
+                    <span className={styles.time}>{formatTimeOfDay(session.startedAt)}</span>
+                  </div>
+
+                  {hasTranscript && (
+                    <div className={styles.transcriptSection}>
+                      <button
+                        className={styles.transcriptToggleBtn}
+                        onClick={() => toggleTranscript(session.id)}
+                      >
+                        {isExpanded ? 'Hide Transcript ▲' : 'View Transcript ▼'}
+                      </button>
+
+                      {isExpanded && (
+                        <div className={styles.transcriptContent}>
+                          <p className={styles.transcriptText}>{session.transcript}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <p className={styles.promptText}>{session.promptText}</p>
-                <div className={styles.meta}>
-                  <span className={styles.duration}>{formatTime(session.durationSeconds)}</span>
-                  <span className={styles.separator}>·</span>
-                  <span className={styles.date}>{formatDate(session.startedAt)}</span>
-                  <span className={styles.time}>{formatTimeOfDay(session.startedAt)}</span>
-                </div>
+
+                <button
+                  className={styles.deleteBtn}
+                  onClick={() => handleDelete(session.id)}
+                  title="Delete session"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                className={styles.deleteBtn}
-                onClick={() => handleDelete(session.id)}
-                title="Delete session"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

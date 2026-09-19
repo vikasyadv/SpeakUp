@@ -4,10 +4,13 @@ import PromptShuffle from '../../components/prompt/PromptShuffle'
 import CategoryBadge from '../../components/prompt/CategoryBadge'
 import SpeakingTimer from '../../components/timer/SpeakingTimer'
 import TimerControls from '../../components/timer/TimerControls'
+import LiveTranscript from '../../components/speaking/LiveTranscript'
+import SpeakingResult from './SpeakingResult'
 import Button from '../../components/common/Button'
 import { getRandomPrompt, getCategories } from '../../api/promptApi'
-import { createSession, completeSession } from '../../api/sessionApi'
+import { createSession, completeSession, abandonSession } from '../../api/sessionApi'
 import useTimer from '../../hooks/useTimer'
+import useSpeechRecognition from '../../hooks/useSpeechRecognition'
 import { TIMER_OPTIONS } from '../../utils/constants'
 import styles from './OffTheCuffPage.module.css'
 
@@ -19,21 +22,66 @@ export default function OffTheCuffPage() {
   const [selectedDuration, setSelectedDuration] = useState(60)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  // Speaking state: 'READY' | 'LISTENING' | 'PAUSED' | 'COMPLETED'
+  const [speakingState, setSpeakingState] = useState('READY')
+  const [completedSessionData, setCompletedSessionData] = useState(null)
+
   const sessionIdRef = useRef(null)
+  const timeLeftRef = useRef(selectedDuration)
+
+  const {
+    transcript,
+    interimTranscript,
+    isSupported: isSpeechSupported,
+    error: speechError,
+    startListening,
+    stopListening,
+    pauseListening,
+    resumeListening,
+    resetTranscript,
+  } = useSpeechRecognition()
+
+  // Finish session handler (shared between timer expiry and early finish)
+  const handleFinishSpeaking = useCallback(async () => {
+    const elapsed = Math.max(1, selectedDuration - timeLeftRef.current)
+    const finalSpeech = stopListening()
+    const capturedTranscript = (finalSpeech || transcript || '').trim()
+
+    if (sessionIdRef.current) {
+      try {
+        await completeSession(sessionIdRef.current, {
+          transcript: capturedTranscript,
+          actualDurationSeconds: elapsed,
+        })
+      } catch (err) {
+        console.error('Failed to complete session:', err)
+      }
+    }
+
+    setCompletedSessionData({
+      prompt,
+      durationSeconds: selectedDuration,
+      actualDurationSeconds: elapsed,
+      transcript: capturedTranscript,
+    })
+
+    setSpeakingState('COMPLETED')
+  }, [prompt, selectedDuration, stopListening, transcript])
 
   const handleTimerComplete = useCallback(() => {
-    // Complete the session when timer finishes
-    if (sessionIdRef.current) {
-      completeSession(sessionIdRef.current)
-        .then(() => { sessionIdRef.current = null })
-        .catch((err) => console.error('Failed to complete session:', err))
-    }
-  }, [])
+    handleFinishSpeaking()
+  }, [handleFinishSpeaking])
 
   const { timeLeft, isRunning, isComplete, start, pause, reset } = useTimer(
     selectedDuration,
     handleTimerComplete
   )
+
+  // Keep timeLeftRef in sync with current timeLeft
+  useEffect(() => {
+    timeLeftRef.current = timeLeft
+  }, [timeLeft])
 
   // Fetch categories on mount
   useEffect(() => {
@@ -47,7 +95,6 @@ export default function OffTheCuffPage() {
     if (location.state?.prompt) {
       setPrompt(location.state.prompt)
       setLoading(false)
-      // Clear the navigation state so refreshing doesn't reload the same prompt
       window.history.replaceState({}, document.title)
     } else {
       fetchPrompt()
@@ -69,41 +116,103 @@ export default function OffTheCuffPage() {
   }
 
   function handleShuffle() {
+    if (speakingState !== 'READY') return
     fetchPrompt(selectedCategory, prompt?.id)
   }
 
   function handleCategoryClick(categoryName) {
+    if (speakingState !== 'READY') return
     const newCategory = categoryName === selectedCategory ? null : categoryName
     setSelectedCategory(newCategory)
     fetchPrompt(newCategory)
   }
 
   function handleSelectDuration(duration) {
+    if (speakingState !== 'READY') return
     setSelectedDuration(duration)
     reset(duration)
   }
 
   async function handleStart() {
-    // Create a session, then start the timer
-    if (prompt) {
-      try {
-        const session = await createSession({
-          promptText: prompt.text,
-          promptId: prompt.id,
-          mode: 'OFF_THE_CUFF',
-          durationSeconds: selectedDuration,
-        })
-        sessionIdRef.current = session.id
-      } catch (err) {
-        console.error('Failed to create session:', err)
-      }
+    if (!prompt) return
+
+    resetTranscript()
+    setSpeakingState('LISTENING')
+
+    // Create session in backend
+    try {
+      const session = await createSession({
+        promptText: prompt.text,
+        promptId: prompt.id,
+        mode: 'OFF_THE_CUFF',
+        durationSeconds: selectedDuration,
+      })
+      sessionIdRef.current = session.id
+    } catch (err) {
+      console.error('Failed to create session:', err)
     }
+
+    startListening()
     start()
   }
 
+  function handlePause() {
+    pause()
+    pauseListening()
+    setSpeakingState('PAUSED')
+  }
+
+  function handleResume() {
+    start()
+    resumeListening()
+    setSpeakingState('LISTENING')
+  }
+
   function handleReset() {
-    sessionIdRef.current = null
+    if (sessionIdRef.current) {
+      abandonSession(sessionIdRef.current).catch((err) =>
+        console.error('Failed to abandon session:', err)
+      )
+      sessionIdRef.current = null
+    }
+
+    stopListening()
+    resetTranscript()
     reset(selectedDuration)
+    setSpeakingState('READY')
+  }
+
+  function handlePracticeAgain() {
+    sessionIdRef.current = null
+    resetTranscript()
+    reset(selectedDuration)
+    setCompletedSessionData(null)
+    setSpeakingState('READY')
+  }
+
+  function handleBackToOffTheCuff() {
+    sessionIdRef.current = null
+    resetTranscript()
+    reset(selectedDuration)
+    setCompletedSessionData(null)
+    setSpeakingState('READY')
+    fetchPrompt(selectedCategory, prompt?.id)
+  }
+
+  // If in COMPLETED state, show the SpeakingResult review screen
+  if (speakingState === 'COMPLETED' && completedSessionData) {
+    return (
+      <div className={styles.page}>
+        <SpeakingResult
+          prompt={completedSessionData.prompt}
+          durationSeconds={completedSessionData.durationSeconds}
+          actualDurationSeconds={completedSessionData.actualDurationSeconds}
+          transcript={completedSessionData.transcript}
+          onPracticeAgain={handlePracticeAgain}
+          onBackToOffTheCuff={handleBackToOffTheCuff}
+        />
+      </div>
+    )
   }
 
   return (
@@ -112,7 +221,11 @@ export default function OffTheCuffPage() {
       <p className={styles.subtitle}>No prep. No notes. Just speak.</p>
 
       {/* Category filter */}
-      <div className={styles.categories}>
+      <div
+        className={`${styles.categories} ${
+          speakingState !== 'READY' ? styles.categoriesDisabled : ''
+        }`}
+      >
         <CategoryBadge
           category="All"
           active={selectedCategory === null}
@@ -135,30 +248,49 @@ export default function OffTheCuffPage() {
         <PromptShuffle prompt={prompt} />
       )}
 
-      {/* Shuffle button */}
-      <div className={styles.shuffleRow}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleShuffle}
-          disabled={loading || isRunning}
-        >
-          ↻ New Prompt
-        </Button>
-      </div>
+      {/* Shuffle button — only when READY */}
+      {speakingState === 'READY' && (
+        <div className={styles.shuffleRow}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleShuffle}
+            disabled={loading}
+          >
+            ↻ New Prompt
+          </Button>
+        </div>
+      )}
 
-      {/* Timer */}
-      <SpeakingTimer timeLeft={timeLeft} isRunning={isRunning} isComplete={isComplete} />
+      {/* Speaking Timer */}
+      <SpeakingTimer
+        timeLeft={timeLeft}
+        isRunning={speakingState === 'LISTENING'}
+        isComplete={isComplete}
+      />
 
-      {/* Timer controls — uses handleStart to create session */}
+      {/* Live Transcript (during active speaking or paused) */}
+      {(speakingState === 'LISTENING' || speakingState === 'PAUSED') && (
+        <LiveTranscript
+          transcript={transcript}
+          interimTranscript={interimTranscript}
+          isListening={speakingState === 'LISTENING'}
+          isPaused={speakingState === 'PAUSED'}
+          isSupported={isSpeechSupported}
+          error={speechError}
+        />
+      )}
+
+      {/* Timer Controls */}
       <TimerControls
         durations={TIMER_OPTIONS}
         selectedDuration={selectedDuration}
         onSelectDuration={handleSelectDuration}
-        isRunning={isRunning}
-        isComplete={isComplete}
+        speakingState={speakingState}
         onStart={handleStart}
-        onPause={pause}
+        onPause={handlePause}
+        onResume={handleResume}
+        onFinish={handleFinishSpeaking}
         onReset={handleReset}
       />
     </div>

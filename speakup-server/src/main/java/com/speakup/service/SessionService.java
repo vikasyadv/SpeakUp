@@ -1,5 +1,6 @@
 package com.speakup.service;
 
+import com.speakup.dto.SessionCompleteDto;
 import com.speakup.dto.SessionCreateDto;
 import com.speakup.dto.SessionDto;
 import com.speakup.exception.ResourceNotFoundException;
@@ -54,11 +55,32 @@ public class SessionService {
      */
     @Transactional
     public SessionDto completeSession(Long id) {
+        return completeSession(id, null);
+    }
+
+    /**
+     * Mark a session as completed with optional transcript and actual duration.
+     */
+    @Transactional
+    public SessionDto completeSession(Long id, SessionCompleteDto dto) {
         Session session = sessionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + id));
 
         session.setStatus(SessionStatus.COMPLETED);
         session.setCompletedAt(Instant.now());
+
+        if (dto != null) {
+            if (dto.getTranscript() != null) {
+                session.setTranscript(dto.getTranscript().trim());
+            }
+            if (dto.getActualDurationSeconds() != null) {
+                session.setActualDurationSeconds(dto.getActualDurationSeconds());
+            } else {
+                session.setActualDurationSeconds(session.getDurationSeconds());
+            }
+        } else {
+            session.setActualDurationSeconds(session.getDurationSeconds());
+        }
 
         Session saved = sessionRepository.save(session);
         return SessionMapper.toDto(saved);

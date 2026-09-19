@@ -16,6 +16,8 @@ public class SessionMapper {
                 session.getPrompt() != null ? session.getPrompt().getId() : null,
                 session.getMode().name(),
                 session.getDurationSeconds(),
+                session.getActualDurationSeconds(),
+                session.getTranscript(),
                 session.getStatus().name(),
                 session.getStartedAt(),
                 session.getCompletedAt(),
