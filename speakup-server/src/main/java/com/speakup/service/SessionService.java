@@ -9,6 +9,7 @@ import com.speakup.model.Mode;
 import com.speakup.model.Prompt;
 import com.speakup.model.Session;
 import com.speakup.model.SessionStatus;
+import com.speakup.repository.FeedbackRepository;
 import com.speakup.repository.PromptRepository;
 import com.speakup.repository.SessionRepository;
 import org.springframework.stereotype.Service;
@@ -16,16 +17,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class SessionService {
 
     private final SessionRepository sessionRepository;
     private final PromptRepository promptRepository;
+    private final FeedbackRepository feedbackRepository;
 
-    public SessionService(SessionRepository sessionRepository, PromptRepository promptRepository) {
+    public SessionService(SessionRepository sessionRepository,
+                          PromptRepository promptRepository,
+                          FeedbackRepository feedbackRepository) {
         this.sessionRepository = sessionRepository;
         this.promptRepository = promptRepository;
+        this.feedbackRepository = feedbackRepository;
     }
 
     /**
@@ -105,17 +111,27 @@ public class SessionService {
      * Get a single session by ID.
      */
     public SessionDto getById(Long id) {
-        Session session = sessionRepository.findById(id)
+        Session session = sessionRepository.findByIdWithPrompt(id)
+                .or(() -> sessionRepository.findById(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + id));
-        return SessionMapper.toDto(session);
+        boolean hasFeedback = feedbackRepository.existsBySessionId(id);
+        return SessionMapper.toDto(session, hasFeedback);
     }
 
     /**
      * Get recent session history (last 20).
      */
     public List<SessionDto> getRecentSessions() {
-        return sessionRepository.findTop20ByOrderByCreatedAtDesc().stream()
-                .map(SessionMapper::toDto)
+        List<Session> sessions = sessionRepository.findTop20ByOrderByCreatedAtDesc();
+        if (sessions.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> sessionIds = sessions.stream().map(Session::getId).toList();
+        Set<Long> feedbackSessionIds = feedbackRepository.findSessionIdsWithFeedback(sessionIds);
+
+        return sessions.stream()
+                .map(s -> SessionMapper.toDto(s, feedbackSessionIds != null && feedbackSessionIds.contains(s.getId())))
                 .toList();
     }
 

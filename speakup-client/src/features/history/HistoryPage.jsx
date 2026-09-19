@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getRecentSessions, deleteSession } from '../../api/sessionApi'
 import { formatTime } from '../../utils/formatTime'
 import styles from './HistoryPage.module.css'
 
 export default function HistoryPage() {
+  const navigate = useNavigate()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedTranscripts, setExpandedTranscripts] = useState({})
@@ -127,6 +129,28 @@ export default function HistoryPage() {
                     <span className={styles.date}>{formatDate(session.startedAt)}</span>
                     <span className={styles.time}>{formatTimeOfDay(session.startedAt)}</span>
                   </div>
+
+                  {session.status === 'COMPLETED' && (
+                    <div className={styles.feedbackRow}>
+                      {session.hasFeedback ? (
+                        <button
+                          className={styles.feedbackBadgeBtn}
+                          onClick={() => navigate(`/off-the-cuff/session/${session.id}`)}
+                          title="View AI Speaking Feedback"
+                        >
+                          <span className={styles.feedbackIcon}>✦</span> AI Feedback
+                        </button>
+                      ) : (
+                        <button
+                          className={styles.getFeedbackBtn}
+                          onClick={() => navigate(`/off-the-cuff/session/${session.id}`)}
+                          title="Review session and get AI feedback"
+                        >
+                          Get AI Feedback →
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {hasTranscript && (
                     <div className={styles.transcriptSection}>

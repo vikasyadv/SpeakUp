@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Button from '../../components/common/Button'
+import AiFeedbackCard from '../../components/feedback/AiFeedbackCard'
 import { bookmarkPrompt, removeBookmark, isBookmarked } from '../../api/bookmarkApi'
 import { formatTime } from '../../utils/formatTime'
 import styles from './SpeakingResult.module.css'
@@ -8,12 +9,14 @@ import styles from './SpeakingResult.module.css'
  * Clean result & review screen shown after completing a speaking session.
  */
 export default function SpeakingResult({
+  sessionId,
   prompt,
   durationSeconds,
   actualDurationSeconds,
   transcript,
   onPracticeAgain,
   onBackToOffTheCuff,
+  onBackToModes,
 }) {
   const [saved, setSaved] = useState(false)
   const [toggling, setToggling] = useState(false)
@@ -107,6 +110,9 @@ export default function SpeakingResult({
         </div>
       </div>
 
+      {/* AI Speaking Coach Feedback Section */}
+      <AiFeedbackCard sessionId={sessionId} transcript={transcript} />
+
       <div className={styles.actions}>
         <Button variant="primary" size="lg" onClick={onPracticeAgain}>
           Practice Again
@@ -114,6 +120,11 @@ export default function SpeakingResult({
         <Button variant="secondary" size="md" onClick={onBackToOffTheCuff}>
           Back to Off the Cuff
         </Button>
+        {onBackToModes && (
+          <Button variant="ghost" size="md" onClick={onBackToModes}>
+            Back to Modes
+          </Button>
+        )}
       </div>
     </div>
   )

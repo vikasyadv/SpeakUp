@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import PromptShuffle from '../../components/prompt/PromptShuffle'
 import CategoryBadge from '../../components/prompt/CategoryBadge'
 import SpeakingTimer from '../../components/timer/SpeakingTimer'
@@ -16,6 +16,7 @@ import styles from './OffTheCuffPage.module.css'
 
 export default function OffTheCuffPage() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [prompt, setPrompt] = useState(null)
   const [categories, setCategories] = useState([])
   const [selectedCategory, setSelectedCategory] = useState(null)
@@ -48,18 +49,22 @@ export default function OffTheCuffPage() {
     const finalSpeech = stopListening()
     const capturedTranscript = (finalSpeech || transcript || '').trim()
 
-    if (sessionIdRef.current) {
+    const currentSessionId = sessionIdRef.current
+    if (currentSessionId) {
       try {
-        await completeSession(sessionIdRef.current, {
+        await completeSession(currentSessionId, {
           transcript: capturedTranscript,
           actualDurationSeconds: elapsed,
         })
       } catch (err) {
         console.error('Failed to complete session:', err)
       }
+      navigate(`/off-the-cuff/session/${currentSessionId}`)
+      return
     }
 
     setCompletedSessionData({
+      sessionId: null,
       prompt,
       durationSeconds: selectedDuration,
       actualDurationSeconds: elapsed,
@@ -67,7 +72,7 @@ export default function OffTheCuffPage() {
     })
 
     setSpeakingState('COMPLETED')
-  }, [prompt, selectedDuration, stopListening, transcript])
+  }, [navigate, prompt, selectedDuration, stopListening, transcript])
 
   const handleTimerComplete = useCallback(() => {
     handleFinishSpeaking()
@@ -204,6 +209,7 @@ export default function OffTheCuffPage() {
     return (
       <div className={styles.page}>
         <SpeakingResult
+          sessionId={completedSessionData.sessionId}
           prompt={completedSessionData.prompt}
           durationSeconds={completedSessionData.durationSeconds}
           actualDurationSeconds={completedSessionData.actualDurationSeconds}

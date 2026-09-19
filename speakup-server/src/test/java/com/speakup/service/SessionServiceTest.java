@@ -5,6 +5,7 @@ import com.speakup.dto.SessionCreateDto;
 import com.speakup.dto.SessionDto;
 import com.speakup.exception.ResourceNotFoundException;
 import com.speakup.model.*;
+import com.speakup.repository.FeedbackRepository;
 import com.speakup.repository.PromptRepository;
 import com.speakup.repository.SessionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -30,6 +32,9 @@ class SessionServiceTest {
 
     @Mock
     private PromptRepository promptRepository;
+
+    @Mock
+    private FeedbackRepository feedbackRepository;
 
     @InjectMocks
     private SessionService sessionService;
@@ -158,17 +163,21 @@ class SessionServiceTest {
 
     @Test
     void getById_returnsSession() {
-        when(sessionRepository.findById(1L)).thenReturn(Optional.of(sampleSession));
+        when(sessionRepository.findByIdWithPrompt(1L)).thenReturn(Optional.of(sampleSession));
+        when(feedbackRepository.existsBySessionId(1L)).thenReturn(true);
 
         SessionDto result = sessionService.getById(1L);
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertEquals("Artificial Intelligence", result.getPromptText());
+        assertEquals("Technology", result.getCategory());
+        assertTrue(result.getHasFeedback());
     }
 
     @Test
     void getById_throwsWhenNotFound() {
+        when(sessionRepository.findByIdWithPrompt(99L)).thenReturn(Optional.empty());
         when(sessionRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
@@ -179,11 +188,15 @@ class SessionServiceTest {
     void getRecentSessions_returnsList() {
         when(sessionRepository.findTop20ByOrderByCreatedAtDesc())
                 .thenReturn(List.of(sampleSession));
+        when(feedbackRepository.findSessionIdsWithFeedback(List.of(1L)))
+                .thenReturn(Set.of(1L));
 
         List<SessionDto> result = sessionService.getRecentSessions();
 
         assertEquals(1, result.size());
         assertEquals("Artificial Intelligence", result.get(0).getPromptText());
+        assertEquals("Technology", result.get(0).getCategory());
+        assertTrue(result.get(0).getHasFeedback());
     }
 
     @Test
