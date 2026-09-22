@@ -346,7 +346,6 @@ class FeedbackServiceTest {
         savedEntity.setStrengths("[\"Addressed waste management issues\"]");
         savedEntity.setImprovements("[\"Mention renewable cost reductions\"]");
         savedEntity.setCreatedAt(Instant.now());
-
         when(feedbackRepository.save(any(Feedback.class))).thenReturn(savedEntity);
 
         FeedbackDto result = feedbackService.generateOrGetFeedback(10L);
@@ -361,6 +360,107 @@ class FeedbackServiceTest {
                 anyString(),
                 isNull(),
                 eq("AGAINST")
+        );
+    }
+
+    @Test
+    void generateOrGetFeedback_storySessionWithPreparationNotes_passesStoryContextToAi() {
+        completedSession.setMode(Mode.STORY);
+        completedSession.setPromptText("You discover an antique pocket watch ticking on your kitchen counter.");
+        completedSession.setPreparationNotes("Hook: strange ticking\nConflict: watch belongs to a missing jeweler\nClimax: footsteps outside\nResolution: solving mystery");
+        completedSession.setStance(null);
+        completedSession.setTranscript("I walked into the dark kitchen and heard the unmistakable metallic tick of an antique pocket watch that was not mine.");
+
+        when(sessionRepository.findById(10L)).thenReturn(Optional.of(completedSession));
+        when(feedbackRepository.findBySessionId(10L)).thenReturn(Optional.empty());
+        when(aiSpeakingCoachClient.analyzeSpeaking(
+                eq("STORY"),
+                eq("You discover an antique pocket watch ticking on your kitchen counter."),
+                eq("Technology"),
+                eq(60),
+                eq(45),
+                eq(completedSession.getTranscript()),
+                eq("Hook: strange ticking\nConflict: watch belongs to a missing jeweler\nClimax: footsteps outside\nResolution: solving mystery"),
+                isNull()
+        )).thenReturn(sampleAiResponse);
+
+        Feedback savedEntity = new Feedback();
+        savedEntity.setId(104L);
+        savedEntity.setSession(completedSession);
+        savedEntity.setOverallScore(8);
+        savedEntity.setClarityScore(9);
+        savedEntity.setRelevanceScore(8);
+        savedEntity.setStructureScore(7);
+        savedEntity.setSummary("Vivid narrative opening with strong atmosphere.");
+        savedEntity.setStrengths("[\"Engaging hook\",\"Sensory details\"]");
+        savedEntity.setImprovements("[\"Develop the climax further\"]");
+        savedEntity.setCreatedAt(Instant.now());
+
+        when(feedbackRepository.save(any(Feedback.class))).thenReturn(savedEntity);
+
+        FeedbackDto result = feedbackService.generateOrGetFeedback(10L);
+
+        assertNotNull(result);
+        assertEquals(8, result.getOverallScore());
+        verify(aiSpeakingCoachClient).analyzeSpeaking(
+                eq("STORY"),
+                eq("You discover an antique pocket watch ticking on your kitchen counter."),
+                eq("Technology"),
+                eq(60),
+                eq(45),
+                anyString(),
+                eq("Hook: strange ticking\nConflict: watch belongs to a missing jeweler\nClimax: footsteps outside\nResolution: solving mystery"),
+                isNull()
+        );
+    }
+
+    @Test
+    void generateOrGetFeedback_storySessionWithoutNotes_passesStoryContextWithNullNotes() {
+        completedSession.setMode(Mode.STORY);
+        completedSession.setPromptText("While exploring an uncharted coastal cave during low tide, you realize the water has risen.");
+        completedSession.setPreparationNotes(null);
+        completedSession.setStance(null);
+        completedSession.setTranscript("The waves started crashing against the cave entrance, and I realized with rising panic that low tide was over.");
+
+        when(sessionRepository.findById(10L)).thenReturn(Optional.of(completedSession));
+        when(feedbackRepository.findBySessionId(10L)).thenReturn(Optional.empty());
+        when(aiSpeakingCoachClient.analyzeSpeaking(
+                eq("STORY"),
+                eq("While exploring an uncharted coastal cave during low tide, you realize the water has risen."),
+                eq("Technology"),
+                eq(60),
+                eq(45),
+                eq(completedSession.getTranscript()),
+                isNull(),
+                isNull()
+        )).thenReturn(sampleAiResponse);
+
+        Feedback savedEntity = new Feedback();
+        savedEntity.setId(105L);
+        savedEntity.setSession(completedSession);
+        savedEntity.setOverallScore(8);
+        savedEntity.setClarityScore(8);
+        savedEntity.setRelevanceScore(9);
+        savedEntity.setStructureScore(8);
+        savedEntity.setSummary("Suspenseful survival story with clear stakes.");
+        savedEntity.setStrengths("[\"High stakes from the start\"]");
+        savedEntity.setImprovements("[\"Describe the escape route in greater detail\"]");
+        savedEntity.setCreatedAt(Instant.now());
+
+        when(feedbackRepository.save(any(Feedback.class))).thenReturn(savedEntity);
+
+        FeedbackDto result = feedbackService.generateOrGetFeedback(10L);
+
+        assertNotNull(result);
+        verify(aiSpeakingCoachClient).analyzeSpeaking(
+                eq("STORY"),
+                eq("While exploring an uncharted coastal cave during low tide, you realize the water has risen."),
+                eq("Technology"),
+                eq(60),
+                eq(45),
+                anyString(),
+                isNull(),
+                isNull()
         );
     }
 }

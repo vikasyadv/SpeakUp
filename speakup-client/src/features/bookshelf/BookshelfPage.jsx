@@ -34,7 +34,9 @@ export default function BookshelfPage() {
   }
 
   function handlePractice(bookmark) {
-    if (bookmark.prompt?.mode === 'DEBATE') {
+    if (bookmark.prompt?.mode === 'STORY') {
+      navigate('/story', { state: { prompt: bookmark.prompt } })
+    } else if (bookmark.prompt?.mode === 'DEBATE') {
       navigate('/debate', { state: { prompt: bookmark.prompt } })
     } else if (bookmark.prompt?.mode === 'RESEARCH') {
       navigate('/research', { state: { prompt: bookmark.prompt } })
@@ -64,6 +66,7 @@ export default function BookshelfPage() {
       {bookmarks.length > 0 && (
         <div className={styles.list}>
           {bookmarks.map((bookmark) => {
+            const isStory = bookmark.prompt?.mode === 'STORY'
             const isDebate = bookmark.prompt?.mode === 'DEBATE'
             const isResearch = bookmark.prompt?.mode === 'RESEARCH'
             return (
@@ -73,14 +76,16 @@ export default function BookshelfPage() {
                     <span className={styles.category}>{bookmark.prompt.category}</span>
                     <span
                       className={`${styles.modeBadge} ${
-                        isDebate
+                        isStory
+                          ? styles.modeStory
+                          : isDebate
                           ? styles.modeDebate
                           : isResearch
                           ? styles.modeResearch
                           : styles.modeOffTheCuff
                       }`}
                     >
-                      {isDebate ? 'Debate' : isResearch ? 'Research' : 'Off the Cuff'}
+                      {isStory ? 'Story' : isDebate ? 'Debate' : isResearch ? 'Research' : 'Off the Cuff'}
                     </span>
                   </div>
                   <p className={styles.text}>{bookmark.prompt.text}</p>

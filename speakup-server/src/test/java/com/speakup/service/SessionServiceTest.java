@@ -293,4 +293,64 @@ class SessionServiceTest {
         assertEquals("AGAINST", result.getStance());
         assertEquals(Stance.AGAINST, session.getStance());
     }
+
+    @Test
+    void createSession_storyMode_persistsAndReturnsDto() {
+        SessionCreateDto dto = new SessionCreateDto("You discover a secret door", 42L, "STORY", 120);
+
+        Session storySession = new Session();
+        storySession.setId(20L);
+        storySession.setPromptText("You discover a secret door");
+        storySession.setMode(Mode.STORY);
+        storySession.setDurationSeconds(120);
+        storySession.setStatus(SessionStatus.IN_PROGRESS);
+
+        when(promptRepository.findById(42L)).thenReturn(Optional.of(samplePrompt));
+        when(sessionRepository.save(any(Session.class))).thenReturn(storySession);
+
+        SessionDto result = sessionService.createSession(dto);
+
+        assertNotNull(result);
+        assertEquals("STORY", result.getMode());
+        assertEquals("You discover a secret door", result.getPromptText());
+        assertEquals(120, result.getDurationSeconds());
+        verify(sessionRepository).save(argThat(s -> s.getMode() == Mode.STORY));
+    }
+
+    @Test
+    void completeSession_storyMode_persistsTranscriptAndPreparationNotes() {
+        Session session = new Session();
+        session.setId(21L);
+        session.setPromptText("You find an old diary in an attic");
+        session.setMode(Mode.STORY);
+        session.setDurationSeconds(120);
+        session.setStatus(SessionStatus.IN_PROGRESS);
+
+        when(sessionRepository.findById(21L)).thenReturn(Optional.of(session));
+        when(sessionRepository.save(any(Session.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SessionCompleteDto completeDto = new SessionCompleteDto(
+                "Once upon a time in a dusty attic, I found a leather diary...",
+                118,
+                "Hook: Old attic\nConflict: Diary describes a disappearance\nClimax: Realizing the author is still alive\nResolution: Contacting them",
+                145
+        );
+
+        SessionDto result = sessionService.completeSession(21L, completeDto);
+
+        assertNotNull(result);
+        assertEquals("STORY", result.getMode());
+        assertEquals("COMPLETED", result.getStatus());
+        assertEquals("Once upon a time in a dusty attic, I found a leather diary...", result.getTranscript());
+        assertEquals(118, result.getActualDurationSeconds());
+        assertEquals(completeDto.getPreparationNotes(), result.getPreparationNotes());
+        assertEquals(145, result.getPreparationDurationSeconds());
+
+        assertEquals(Mode.STORY, session.getMode());
+        assertEquals(SessionStatus.COMPLETED, session.getStatus());
+        assertEquals("Once upon a time in a dusty attic, I found a leather diary...", session.getTranscript());
+        assertEquals(118, session.getActualDurationSeconds());
+        assertEquals(completeDto.getPreparationNotes(), session.getPreparationNotes());
+        assertEquals(145, session.getPreparationDurationSeconds());
+    }
 }

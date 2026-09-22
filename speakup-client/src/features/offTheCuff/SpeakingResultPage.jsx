@@ -69,10 +69,11 @@ export default function SpeakingResultPage() {
     )
   }
 
+  const isStory = session?.mode === 'STORY'
   const isDebate = session?.mode === 'DEBATE'
   const isResearch = session?.mode === 'RESEARCH'
-  const modePath = isDebate ? '/debate' : isResearch ? '/research' : '/off-the-cuff'
-  const modeLabel = isDebate ? 'Debate' : isResearch ? 'Research' : 'Off the Cuff'
+  const modePath = isStory ? '/story' : isDebate ? '/debate' : isResearch ? '/research' : '/off-the-cuff'
+  const modeLabel = isStory ? 'Story' : isDebate ? 'Debate' : isResearch ? 'Research' : 'Off the Cuff'
 
   if (error && (!session || session.status !== 'COMPLETED')) {
     return (

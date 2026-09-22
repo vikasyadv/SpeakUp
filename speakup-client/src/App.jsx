@@ -24,6 +24,7 @@ export default function App() {
           <Route path="/debate" element={<DebatePage />} />
           <Route path="/debate/session/:sessionId" element={<SpeakingResultPage />} />
           <Route path="/story" element={<StoryPage />} />
+          <Route path="/story/session/:sessionId" element={<SpeakingResultPage />} />
           <Route path="/bookshelf" element={<BookshelfPage />} />
           <Route path="/history" element={<HistoryPage />} />
         </Routes>

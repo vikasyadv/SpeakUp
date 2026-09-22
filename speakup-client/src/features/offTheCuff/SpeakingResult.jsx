@@ -25,9 +25,12 @@ export default function SpeakingResult({
   const [saved, setSaved] = useState(false)
   const [toggling, setToggling] = useState(false)
   const displayDuration = actualDurationSeconds ?? durationSeconds
+  const isStory = mode === 'STORY' || prompt?.mode === 'STORY'
   const isDebate = mode === 'DEBATE' || prompt?.mode === 'DEBATE'
   const isResearch = mode === 'RESEARCH' || prompt?.mode === 'RESEARCH'
-  const backToModeLabel = isDebate
+  const backToModeLabel = isStory
+    ? 'Back to Story'
+    : isDebate
     ? 'Back to Debate'
     : isResearch
     ? 'Back to Research'
@@ -76,6 +79,7 @@ export default function SpeakingResult({
       <div className={styles.promptSection}>
         <div className={styles.promptMetaRow}>
           <span className={styles.category}>{prompt?.category || 'General'}</span>
+          {isStory && <span className={styles.modeBadgeStory}>Story</span>}
           {isDebate && <span className={styles.modeBadgeDebate}>Debate</span>}
           {stance && (
             <span
@@ -109,7 +113,7 @@ export default function SpeakingResult({
           <span className={styles.statLabel}>Target Timer</span>
           <span className={styles.statValue}>{formatTime(durationSeconds)}</span>
         </div>
-        {(isDebate || isResearch || preparationDurationSeconds != null) && (
+        {(isStory || isDebate || isResearch || preparationDurationSeconds != null) && (
           <div className={styles.statCard}>
             <span className={styles.statLabel}>Prep Time</span>
             <span className={styles.statValue}>{formatTime(preparationDurationSeconds || 0)}</span>

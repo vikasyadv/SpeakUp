@@ -102,9 +102,12 @@ export default function HistoryPage() {
             const hasTranscript = Boolean(session.transcript)
             const isExpanded = Boolean(expandedTranscripts[session.id])
             const speakingDuration = session.actualDurationSeconds ?? session.durationSeconds
+            const isStory = session.mode === 'STORY'
             const isDebate = session.mode === 'DEBATE'
             const isResearch = session.mode === 'RESEARCH'
-            const sessionPath = isDebate
+            const sessionPath = isStory
+              ? `/story/session/${session.id}`
+              : isDebate
               ? `/debate/session/${session.id}`
               : isResearch
               ? `/research/session/${session.id}`
@@ -116,14 +119,16 @@ export default function HistoryPage() {
                   <div className={styles.topRow}>
                     <span
                       className={`${styles.mode} ${
-                        isDebate
+                        isStory
+                          ? styles.modeStory
+                          : isDebate
                           ? styles.modeDebate
                           : isResearch
                           ? styles.modeResearch
                           : styles.modeOffTheCuff
                       }`}
                     >
-                      {isDebate ? 'Debate' : isResearch ? 'Research' : 'Off the Cuff'}
+                      {isStory ? 'Story' : isDebate ? 'Debate' : isResearch ? 'Research' : 'Off the Cuff'}
                     </span>
                     {session.stance && (
                       <span
@@ -154,7 +159,7 @@ export default function HistoryPage() {
                           </span>
                         )}
                     </span>
-                    {(isDebate || isResearch) && session.preparationDurationSeconds != null && (
+                    {(isStory || isDebate || isResearch) && session.preparationDurationSeconds != null && (
                       <>
                         <span className={styles.separator}>·</span>
                         <span className={styles.prepDuration} title="Preparation Time">

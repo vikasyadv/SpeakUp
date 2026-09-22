@@ -84,6 +84,12 @@
   border: 1px solid rgba(244, 63, 94, 0.25);
 }
 
+.modeStory {
+  color: #c084fc;
+  background-color: rgba(192, 132, 252, 0.12);
+  border: 1px solid rgba(192, 132, 252, 0.25);
+}
+
 .modeOffTheCuff {
   color: var(--color-primary);
   background-color: var(--color-primary-glow);
