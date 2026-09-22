@@ -69,9 +69,10 @@ export default function SpeakingResultPage() {
     )
   }
 
+  const isDebate = session?.mode === 'DEBATE'
   const isResearch = session?.mode === 'RESEARCH'
-  const modePath = isResearch ? '/research' : '/off-the-cuff'
-  const modeLabel = isResearch ? 'Research' : 'Off the Cuff'
+  const modePath = isDebate ? '/debate' : isResearch ? '/research' : '/off-the-cuff'
+  const modeLabel = isDebate ? 'Debate' : isResearch ? 'Research' : 'Off the Cuff'
 
   if (error && (!session || session.status !== 'COMPLETED')) {
     return (
@@ -103,6 +104,7 @@ export default function SpeakingResultPage() {
           mode: session.mode,
         }}
         mode={session.mode}
+        stance={session.stance}
         durationSeconds={session.durationSeconds}
         actualDurationSeconds={session.actualDurationSeconds}
         preparationDurationSeconds={session.preparationDurationSeconds}

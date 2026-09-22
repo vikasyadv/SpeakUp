@@ -55,6 +55,10 @@ public class Session {
     @Column(name = "preparation_duration_seconds")
     private Integer preparationDurationSeconds;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stance", length = 20)
+    private Stance stance;
+
     @Column(name = "started_at", nullable = false)
     private Instant startedAt;
 

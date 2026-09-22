@@ -12,6 +12,7 @@ export default function SpeakingResult({
   sessionId,
   prompt,
   mode,
+  stance,
   durationSeconds,
   actualDurationSeconds,
   preparationDurationSeconds,
@@ -24,8 +25,13 @@ export default function SpeakingResult({
   const [saved, setSaved] = useState(false)
   const [toggling, setToggling] = useState(false)
   const displayDuration = actualDurationSeconds ?? durationSeconds
+  const isDebate = mode === 'DEBATE' || prompt?.mode === 'DEBATE'
   const isResearch = mode === 'RESEARCH' || prompt?.mode === 'RESEARCH'
-  const backToModeLabel = isResearch ? 'Back to Research' : 'Back to Off the Cuff'
+  const backToModeLabel = isDebate
+    ? 'Back to Debate'
+    : isResearch
+    ? 'Back to Research'
+    : 'Back to Off the Cuff'
 
   useEffect(() => {
     if (!prompt?.id) return
@@ -68,7 +74,19 @@ export default function SpeakingResult({
       <div className={styles.headerBadge}>Session Complete</div>
 
       <div className={styles.promptSection}>
-        <span className={styles.category}>{prompt?.category || 'General'}</span>
+        <div className={styles.promptMetaRow}>
+          <span className={styles.category}>{prompt?.category || 'General'}</span>
+          {isDebate && <span className={styles.modeBadgeDebate}>Debate</span>}
+          {stance && (
+            <span
+              className={`${styles.stanceBadge} ${
+                stance === 'FOR' ? styles.stanceFor : styles.stanceAgainst
+              }`}
+            >
+              Stance: {stance}
+            </span>
+          )}
+        </div>
         <h2 className={styles.promptText}>{prompt?.text}</h2>
         {prompt?.id && (
           <button
@@ -91,10 +109,22 @@ export default function SpeakingResult({
           <span className={styles.statLabel}>Target Timer</span>
           <span className={styles.statValue}>{formatTime(durationSeconds)}</span>
         </div>
-        {(isResearch || preparationDurationSeconds != null) && (
+        {(isDebate || isResearch || preparationDurationSeconds != null) && (
           <div className={styles.statCard}>
             <span className={styles.statLabel}>Prep Time</span>
             <span className={styles.statValue}>{formatTime(preparationDurationSeconds || 0)}</span>
+          </div>
+        )}
+        {stance && (
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>Stance</span>
+            <span
+              className={`${styles.statValue} ${
+                stance === 'FOR' ? styles.stanceForText : styles.stanceAgainstText
+              }`}
+            >
+              {stance}
+            </span>
           </div>
         )}
         <div className={styles.statCard}>

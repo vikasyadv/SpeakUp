@@ -78,6 +78,12 @@
   border: 1px solid rgba(56, 189, 248, 0.25);
 }
 
+.modeDebate {
+  color: #f43f5e;
+  background-color: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
 .modeOffTheCuff {
   color: var(--color-primary);
   background-color: var(--color-primary-glow);

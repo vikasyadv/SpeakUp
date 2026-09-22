@@ -79,6 +79,8 @@ public class FeedbackService {
                 ? session.getActualDurationSeconds()
                 : session.getDurationSeconds();
 
+        String stanceName = session.getStance() != null ? session.getStance().name() : null;
+
         // Call AI speaking coach client
         AiFeedbackResponse aiResponse = aiSpeakingCoachClient.analyzeSpeaking(
                 session.getMode().name(),
@@ -87,7 +89,8 @@ public class FeedbackService {
                 session.getDurationSeconds(),
                 actualDuration,
                 transcript,
-                session.getPreparationNotes()
+                session.getPreparationNotes(),
+                stanceName
         );
 
         // Build and persist Feedback entity

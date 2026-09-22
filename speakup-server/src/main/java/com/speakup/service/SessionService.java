@@ -9,6 +9,7 @@ import com.speakup.model.Mode;
 import com.speakup.model.Prompt;
 import com.speakup.model.Session;
 import com.speakup.model.SessionStatus;
+import com.speakup.model.Stance;
 import com.speakup.repository.FeedbackRepository;
 import com.speakup.repository.PromptRepository;
 import com.speakup.repository.SessionRepository;
@@ -52,6 +53,10 @@ public class SessionService {
             session.setPrompt(prompt);
         }
 
+        if (dto.getStance() != null && !dto.getStance().isBlank()) {
+            session.setStance(Stance.fromString(dto.getStance()));
+        }
+
         Session saved = sessionRepository.save(session);
         return SessionMapper.toDto(saved);
     }
@@ -89,6 +94,9 @@ public class SessionService {
             }
             if (dto.getPreparationDurationSeconds() != null) {
                 session.setPreparationDurationSeconds(dto.getPreparationDurationSeconds());
+            }
+            if (dto.getStance() != null && !dto.getStance().isBlank()) {
+                session.setStance(Stance.fromString(dto.getStance()));
             }
         } else {
             session.setActualDurationSeconds(session.getDurationSeconds());

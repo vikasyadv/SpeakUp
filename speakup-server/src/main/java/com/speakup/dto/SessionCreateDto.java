@@ -25,4 +25,13 @@ public class SessionCreateDto {
     @NotNull(message = "Duration is required")
     @Positive(message = "Duration must be positive")
     private Integer durationSeconds;
+
+    private String stance;
+
+    public SessionCreateDto(String promptText, Long promptId, String mode, Integer durationSeconds) {
+        this.promptText = promptText;
+        this.promptId = promptId;
+        this.mode = mode;
+        this.durationSeconds = durationSeconds;
+    }
 }

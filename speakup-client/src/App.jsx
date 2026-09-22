@@ -22,6 +22,7 @@ export default function App() {
           <Route path="/research" element={<ResearchPage />} />
           <Route path="/research/session/:sessionId" element={<SpeakingResultPage />} />
           <Route path="/debate" element={<DebatePage />} />
+          <Route path="/debate/session/:sessionId" element={<SpeakingResultPage />} />
           <Route path="/story" element={<StoryPage />} />
           <Route path="/bookshelf" element={<BookshelfPage />} />
           <Route path="/history" element={<HistoryPage />} />

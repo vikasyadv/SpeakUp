@@ -58,15 +58,28 @@ public class GeminiSpeakingCoachClient implements AiSpeakingCoachClient {
             int actualDurationSeconds,
             String transcript,
             String preparationNotes) {
+        return analyzeSpeaking(mode, topic, category, targetDurationSeconds, actualDurationSeconds, transcript, preparationNotes, null);
+    }
+
+    @Override
+    public AiFeedbackResponse analyzeSpeaking(
+            String mode,
+            String topic,
+            String category,
+            int targetDurationSeconds,
+            int actualDurationSeconds,
+            String transcript,
+            String preparationNotes,
+            String stance) {
 
         if (apiKey.isEmpty()) {
             throw new AiServiceException("Gemini API key is not configured on the server");
         }
 
         String systemPrompt = buildSystemPrompt();
-        String userPrompt = buildUserPrompt(mode, topic, category, targetDurationSeconds, actualDurationSeconds, transcript, preparationNotes);
+        String userPrompt = buildUserPrompt(mode, topic, category, targetDurationSeconds, actualDurationSeconds, transcript, preparationNotes, stance);
 
-        log.info("Requesting Gemini AI analysis for topic: '{}', mode: '{}'", topic, mode);
+        log.info("Requesting Gemini AI analysis for topic: '{}', mode: '{}', stance: '{}'", topic, mode, stance);
 
         try {
             Map<String, Object> requestBody = buildGeminiRequestBody(systemPrompt, userPrompt);
@@ -121,14 +134,15 @@ public class GeminiSpeakingCoachClient implements AiSpeakingCoachClient {
                 Your role is to give supportive, concise, and highly actionable practice feedback based on a speech transcript.
 
                 CRITICAL GUIDELINES:
-                1. You only have access to the transcript text, speaking duration, prompt topic, and optional preparation notes.
-                2. Do NOT evaluate or claim to measure vocal tone, volume, pronunciation, body language, facial expression, eye contact, microphone quality, emotional state, or precise speaking speed.
+                1. You only have access to the transcript text, speaking duration, prompt topic/resolution, optional preparation notes, and selected stance.
+                2. Do NOT evaluate or claim to measure vocal tone, volume, pronunciation, body language, facial expression, eye contact, microphone quality, emotional state, physical confidence, or precise speaking speed.
                 3. Focus exclusively on:
                    - Clarity (conciseness, word choice, clarity of thought)
-                   - Relevance (how well the speaker addressed the specific topic or research question)
+                   - Relevance (how well the speaker addressed the specific topic, research question, or debate resolution)
                    - Structure (introduction/hook, logical progression, conclusion)
                    - Overall effectiveness
                    - For Research mode sessions: evaluate how clearly the speaker answered the research question, whether the explanation was well-organized and supported by evidence or examples reflected in the transcript, and how effectively any preparation notes were developed into the spoken response.
+                   - For Debate mode sessions: evaluate how persuasively the speaker argued for their selected stance (FOR or AGAINST), the strength and logical connection of their claims, whether they actually defended the chosen side, whether they recognized or handled opposing arguments/counterpoints when present, and specific actionable ways their argumentation could be stronger.
                 4. Give constructive, encouraging, and specific feedback. Avoid generic filler.
                 5. Scores MUST be integers between 1 and 10 (1 = poor, 10 = exceptional).
 
@@ -158,12 +172,16 @@ public class GeminiSpeakingCoachClient implements AiSpeakingCoachClient {
             int targetDurationSeconds,
             int actualDurationSeconds,
             String transcript,
-            String preparationNotes) {
+            String preparationNotes,
+            String stance) {
 
         StringBuilder sb = new StringBuilder();
         sb.append("Please evaluate the following speaking practice session:\n\n");
         sb.append(String.format("- Mode: %s\n", mode != null ? mode : "OFF_THE_CUFF"));
-        sb.append(String.format("- Topic: %s\n", topic != null ? topic : "Unknown"));
+        sb.append(String.format("- Topic / Resolution: %s\n", topic != null ? topic : "Unknown"));
+        if (stance != null && !stance.isBlank()) {
+            sb.append(String.format("- Selected Stance: %s\n", stance.trim()));
+        }
         sb.append(String.format("- Category: %s\n", category != null ? category : "General"));
         sb.append(String.format("- Target Duration: %d seconds\n", targetDurationSeconds));
         sb.append(String.format("- Actual Duration: %d seconds\n", actualDurationSeconds));

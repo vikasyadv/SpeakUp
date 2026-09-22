@@ -249,4 +249,48 @@ class SessionServiceTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> sessionService.deleteSession(99L));
     }
+
+    @Test
+    void createSession_withStance_persistsStance() {
+        SessionCreateDto dto = new SessionCreateDto("AI in education", null, "DEBATE", 120);
+        dto.setStance("FOR");
+
+        Session debateSession = new Session();
+        debateSession.setId(10L);
+        debateSession.setPromptText("AI in education");
+        debateSession.setMode(Mode.DEBATE);
+        debateSession.setDurationSeconds(120);
+        debateSession.setStance(Stance.FOR);
+        debateSession.setStatus(SessionStatus.IN_PROGRESS);
+
+        when(sessionRepository.save(any(Session.class))).thenReturn(debateSession);
+
+        SessionDto result = sessionService.createSession(dto);
+
+        assertNotNull(result);
+        assertEquals("FOR", result.getStance());
+        verify(sessionRepository).save(argThat(s -> s.getStance() == Stance.FOR));
+    }
+
+    @Test
+    void completeSession_withStance_persistsStance() {
+        Session session = new Session();
+        session.setId(11L);
+        session.setPromptText("Nuclear energy");
+        session.setMode(Mode.DEBATE);
+        session.setDurationSeconds(120);
+        session.setStatus(SessionStatus.IN_PROGRESS);
+
+        when(sessionRepository.findById(11L)).thenReturn(Optional.of(session));
+        when(sessionRepository.save(any(Session.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SessionCompleteDto completeDto = new SessionCompleteDto("My debate transcript", 115, "Notes", 60);
+        completeDto.setStance("AGAINST");
+
+        SessionDto result = sessionService.completeSession(11L, completeDto);
+
+        assertNotNull(result);
+        assertEquals("AGAINST", result.getStance());
+        assertEquals(Stance.AGAINST, session.getStance());
+    }
 }

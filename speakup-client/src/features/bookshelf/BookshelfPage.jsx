@@ -34,7 +34,9 @@ export default function BookshelfPage() {
   }
 
   function handlePractice(bookmark) {
-    if (bookmark.prompt?.mode === 'RESEARCH') {
+    if (bookmark.prompt?.mode === 'DEBATE') {
+      navigate('/debate', { state: { prompt: bookmark.prompt } })
+    } else if (bookmark.prompt?.mode === 'RESEARCH') {
       navigate('/research', { state: { prompt: bookmark.prompt } })
     } else {
       navigate('/off-the-cuff', { state: { prompt: bookmark.prompt } })
@@ -62,14 +64,23 @@ export default function BookshelfPage() {
       {bookmarks.length > 0 && (
         <div className={styles.list}>
           {bookmarks.map((bookmark) => {
+            const isDebate = bookmark.prompt?.mode === 'DEBATE'
             const isResearch = bookmark.prompt?.mode === 'RESEARCH'
             return (
               <div key={bookmark.id} className={styles.card}>
                 <div className={styles.cardContent}>
                   <div className={styles.cardHeader}>
                     <span className={styles.category}>{bookmark.prompt.category}</span>
-                    <span className={`${styles.modeBadge} ${isResearch ? styles.modeResearch : styles.modeOffTheCuff}`}>
-                      {isResearch ? 'Research' : 'Off the Cuff'}
+                    <span
+                      className={`${styles.modeBadge} ${
+                        isDebate
+                          ? styles.modeDebate
+                          : isResearch
+                          ? styles.modeResearch
+                          : styles.modeOffTheCuff
+                      }`}
+                    >
+                      {isDebate ? 'Debate' : isResearch ? 'Research' : 'Off the Cuff'}
                     </span>
                   </div>
                   <p className={styles.text}>{bookmark.prompt.text}</p>

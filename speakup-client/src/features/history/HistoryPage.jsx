@@ -102,8 +102,11 @@ export default function HistoryPage() {
             const hasTranscript = Boolean(session.transcript)
             const isExpanded = Boolean(expandedTranscripts[session.id])
             const speakingDuration = session.actualDurationSeconds ?? session.durationSeconds
+            const isDebate = session.mode === 'DEBATE'
             const isResearch = session.mode === 'RESEARCH'
-            const sessionPath = isResearch
+            const sessionPath = isDebate
+              ? `/debate/session/${session.id}`
+              : isResearch
               ? `/research/session/${session.id}`
               : `/off-the-cuff/session/${session.id}`
 
@@ -111,9 +114,26 @@ export default function HistoryPage() {
               <div key={session.id} className={styles.card}>
                 <div className={styles.cardMain}>
                   <div className={styles.topRow}>
-                    <span className={`${styles.mode} ${isResearch ? styles.modeResearch : styles.modeOffTheCuff}`}>
-                      {isResearch ? 'Research' : 'Off the Cuff'}
+                    <span
+                      className={`${styles.mode} ${
+                        isDebate
+                          ? styles.modeDebate
+                          : isResearch
+                          ? styles.modeResearch
+                          : styles.modeOffTheCuff
+                      }`}
+                    >
+                      {isDebate ? 'Debate' : isResearch ? 'Research' : 'Off the Cuff'}
                     </span>
+                    {session.stance && (
+                      <span
+                        className={`${styles.stanceBadge} ${
+                          session.stance === 'FOR' ? styles.stanceFor : styles.stanceAgainst
+                        }`}
+                      >
+                        {session.stance}
+                      </span>
+                    )}
                     {session.category && (
                       <span className={styles.categoryBadge}>{session.category}</span>
                     )}
@@ -134,7 +154,7 @@ export default function HistoryPage() {
                           </span>
                         )}
                     </span>
-                    {isResearch && session.preparationDurationSeconds != null && (
+                    {(isDebate || isResearch) && session.preparationDurationSeconds != null && (
                       <>
                         <span className={styles.separator}>·</span>
                         <span className={styles.prepDuration} title="Preparation Time">

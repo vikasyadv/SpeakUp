@@ -34,7 +34,8 @@ public class SessionMapper {
                 session.getCompletedAt(),
                 session.getCreatedAt(),
                 session.getPreparationNotes(),
-                session.getPreparationDurationSeconds()
+                session.getPreparationDurationSeconds(),
+                session.getStance() != null ? session.getStance().name() : null
         );
     }
 }

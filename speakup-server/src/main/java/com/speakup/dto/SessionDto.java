@@ -27,4 +27,14 @@ public class SessionDto {
     private Instant createdAt;
     private String preparationNotes;
     private Integer preparationDurationSeconds;
+    private String stance;
+
+    public SessionDto(Long id, String promptText, Long promptId, String category, String mode,
+                      Integer durationSeconds, Integer actualDurationSeconds, String transcript,
+                      String status, Boolean hasFeedback, Instant startedAt, Instant completedAt,
+                      Instant createdAt, String preparationNotes, Integer preparationDurationSeconds) {
+        this(id, promptText, promptId, category, mode, durationSeconds, actualDurationSeconds,
+                transcript, status, hasFeedback, startedAt, completedAt, createdAt,
+                preparationNotes, preparationDurationSeconds, null);
+    }
 }
