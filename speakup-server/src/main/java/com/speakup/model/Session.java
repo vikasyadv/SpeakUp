@@ -32,6 +32,13 @@ public class Session {
     @JoinColumn(name = "prompt_id")
     private Prompt prompt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @Column(name = "guest_id", length = 36)
+    private String guestId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Mode mode;

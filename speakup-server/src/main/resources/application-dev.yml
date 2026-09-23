@@ -28,3 +28,7 @@ gemini:
     key: ${GEMINI_API_KEY:}
     url: https://generativelanguage.googleapis.com/v1beta/models
   model: gemini-3.6-flash
+
+jwt:
+  secret: ${JWT_SECRET:speakup-dev-jwt-secret-key-must-be-at-least-256-bits-long-for-hmac-sha256}
+  expiration-hours: ${JWT_EXPIRATION_HOURS:168}

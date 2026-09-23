@@ -8,6 +8,7 @@ import com.speakup.model.Session;
 import com.speakup.model.SessionStatus;
 import com.speakup.repository.FeedbackRepository;
 import com.speakup.repository.SessionRepository;
+import com.speakup.security.CallerContext;
 import com.speakup.service.ai.AiFeedbackResponse;
 import com.speakup.service.ai.AiSpeakingCoachClient;
 import org.slf4j.Logger;
@@ -37,14 +38,18 @@ public class FeedbackService {
     }
 
     /**
-     * Generate or retrieve feedback for a completed session.
-     * Idempotent: If feedback already exists for the session, returns the persisted feedback
-     * without calling the AI service again.
+     * Generate or retrieve feedback for a completed session with caller ownership verification.
+     * Idempotent: If feedback already exists for the session, returns the persisted feedback.
      */
     @Transactional
-    public FeedbackDto generateOrGetFeedback(Long sessionId) {
+    public FeedbackDto generateOrGetFeedback(Long sessionId, CallerContext caller) {
         Session session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + sessionId));
+
+        if (caller != null && !caller.isAnonymous() && !SessionService.isOwnedBy(session, caller)) {
+            // Return 404 to avoid leaking existence of another user's session
+            throw new ResourceNotFoundException("Session not found with id: " + sessionId);
+        }
 
         // Return existing feedback if already generated
         Optional<Feedback> existing = feedbackRepository.findBySessionId(sessionId);
@@ -110,12 +115,28 @@ public class FeedbackService {
         return FeedbackMapper.toDto(saved);
     }
 
+    public FeedbackDto generateOrGetFeedback(Long sessionId) {
+        return generateOrGetFeedback(sessionId, CallerContext.anonymous());
+    }
+
     /**
-     * Retrieve already persisted feedback for a session.
+     * Retrieve already persisted feedback for a session with caller ownership verification.
      */
     @Transactional(readOnly = true)
-    public FeedbackDto getFeedbackBySessionId(Long sessionId) {
-        if (!sessionRepository.existsById(sessionId)) {
+    public FeedbackDto getFeedbackBySessionId(Long sessionId, CallerContext caller) {
+        if (caller == null || caller.isAnonymous()) {
+            if (!sessionRepository.existsById(sessionId)) {
+                throw new ResourceNotFoundException("Session not found with id: " + sessionId);
+            }
+            Feedback feedback = feedbackRepository.findBySessionId(sessionId)
+                    .orElseThrow(() -> new ResourceNotFoundException("No feedback found for session id: " + sessionId));
+            return FeedbackMapper.toDto(feedback);
+        }
+
+        Session session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + sessionId));
+
+        if (!SessionService.isOwnedBy(session, caller)) {
             throw new ResourceNotFoundException("Session not found with id: " + sessionId);
         }
 
@@ -123,5 +144,9 @@ public class FeedbackService {
                 .orElseThrow(() -> new ResourceNotFoundException("No feedback found for session id: " + sessionId));
 
         return FeedbackMapper.toDto(feedback);
+    }
+
+    public FeedbackDto getFeedbackBySessionId(Long sessionId) {
+        return getFeedbackBySessionId(sessionId, CallerContext.anonymous());
     }
 }

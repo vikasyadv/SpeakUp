@@ -1,8 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import styles from './Header.module.css'
 
 export default function Header() {
   const location = useLocation()
+  const { user, isAuthenticated, logout } = useAuth()
   const isHome = location.pathname === '/'
 
   return (
@@ -26,6 +28,35 @@ export default function Header() {
           >
             History
           </Link>
+
+          {isAuthenticated ? (
+            <div className={styles.userSection}>
+              <span className={styles.userGreeting} title={user?.email}>
+                {user?.displayName || user?.email?.split('@')[0] || 'Account'}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                className={styles.logoutBtn}
+                title="Sign out"
+              >
+                Log out
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              state={{ from: location.pathname }}
+              className={`${styles.authLink} ${
+                location.pathname === '/login' || location.pathname === '/register'
+                  ? styles.navActive
+                  : ''
+              }`}
+            >
+              Sign in
+            </Link>
+          )}
+
           {!isHome && (
             <Link to="/" className={styles.backLink}>
               ← Modes

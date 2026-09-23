@@ -59,6 +59,55 @@
   color: var(--color-primary-hover);
 }
 
+.authLink {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+  font-weight: 500;
+}
+
+.authLink:hover {
+  color: var(--color-text);
+}
+
+.userSection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.userGreeting {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  background-color: var(--color-surface-raised);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.logoutBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+  font-family: var(--font-sans);
+}
+
+.logoutBtn:hover {
+  color: var(--color-primary);
+}
+
 .backLink {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);

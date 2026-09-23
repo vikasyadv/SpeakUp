@@ -8,9 +8,7 @@ import lombok.Setter;
 import java.time.Instant;
 
 @Entity
-@Table(name = "bookmarks", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"prompt_id"})
-})
+@Table(name = "bookmarks")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,6 +21,13 @@ public class Bookmark {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "prompt_id", nullable = false)
     private Prompt prompt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @Column(name = "guest_id", length = 36)
+    private String guestId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

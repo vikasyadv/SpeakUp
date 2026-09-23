@@ -5,14 +5,12 @@ import com.speakup.dto.SessionCreateDto;
 import com.speakup.dto.SessionDto;
 import com.speakup.exception.ResourceNotFoundException;
 import com.speakup.mapper.SessionMapper;
-import com.speakup.model.Mode;
-import com.speakup.model.Prompt;
-import com.speakup.model.Session;
-import com.speakup.model.SessionStatus;
-import com.speakup.model.Stance;
+import com.speakup.model.*;
 import com.speakup.repository.FeedbackRepository;
 import com.speakup.repository.PromptRepository;
 import com.speakup.repository.SessionRepository;
+import com.speakup.repository.UserRepository;
+import com.speakup.security.CallerContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,26 +24,43 @@ public class SessionService {
     private final SessionRepository sessionRepository;
     private final PromptRepository promptRepository;
     private final FeedbackRepository feedbackRepository;
+    private final UserRepository userRepository;
 
     public SessionService(SessionRepository sessionRepository,
                           PromptRepository promptRepository,
-                          FeedbackRepository feedbackRepository) {
+                          FeedbackRepository feedbackRepository,
+                          UserRepository userRepository) {
         this.sessionRepository = sessionRepository;
         this.promptRepository = promptRepository;
         this.feedbackRepository = feedbackRepository;
+        this.userRepository = userRepository;
     }
 
     /**
-     * Create a new session when the user starts speaking.
+     * Create a new session when the user starts speaking with caller ownership.
      */
     @Transactional
-    public SessionDto createSession(SessionCreateDto dto) {
+    public SessionDto createSession(SessionCreateDto dto, CallerContext caller) {
         Session session = new Session();
         session.setPromptText(dto.getPromptText());
         session.setMode(Mode.valueOf(dto.getMode().toUpperCase()));
         session.setDurationSeconds(dto.getDurationSeconds());
         session.setStatus(SessionStatus.IN_PROGRESS);
         session.setStartedAt(Instant.now());
+
+        // Assign exclusive ownership based on CallerContext
+        if (caller != null && caller.isAuthenticated()) {
+            User user = userRepository.findById(caller.getUserId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + caller.getUserId()));
+            session.setUser(user);
+            session.setGuestId(null);
+        } else if (caller != null && caller.isGuest()) {
+            session.setUser(null);
+            session.setGuestId(caller.getGuestId());
+        } else {
+            session.setUser(null);
+            session.setGuestId(null);
+        }
 
         // Link to prompt entity if ID provided
         if (dto.getPromptId() != null) {
@@ -61,21 +76,16 @@ public class SessionService {
         return SessionMapper.toDto(saved);
     }
 
-    /**
-     * Mark a session as completed.
-     */
-    @Transactional
-    public SessionDto completeSession(Long id) {
-        return completeSession(id, null);
+    public SessionDto createSession(SessionCreateDto dto) {
+        return createSession(dto, CallerContext.anonymous());
     }
 
     /**
-     * Mark a session as completed with optional transcript and actual duration.
+     * Mark a session as completed with caller ownership check.
      */
     @Transactional
-    public SessionDto completeSession(Long id, SessionCompleteDto dto) {
-        Session session = sessionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + id));
+    public SessionDto completeSession(Long id, SessionCompleteDto dto, CallerContext caller) {
+        Session session = getSessionAndVerifyOwnership(id, caller);
 
         session.setStatus(SessionStatus.COMPLETED);
         session.setCompletedAt(Instant.now());
@@ -106,13 +116,20 @@ public class SessionService {
         return SessionMapper.toDto(saved);
     }
 
+    public SessionDto completeSession(Long id, SessionCompleteDto dto) {
+        return completeSession(id, dto, CallerContext.anonymous());
+    }
+
+    public SessionDto completeSession(Long id) {
+        return completeSession(id, null, CallerContext.anonymous());
+    }
+
     /**
-     * Mark a session as abandoned (user navigated away without finishing).
+     * Mark a session as abandoned with caller ownership check.
      */
     @Transactional
-    public SessionDto abandonSession(Long id) {
-        Session session = sessionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + id));
+    public SessionDto abandonSession(Long id, CallerContext caller) {
+        Session session = getSessionAndVerifyOwnership(id, caller);
 
         session.setStatus(SessionStatus.ABANDONED);
         session.setCompletedAt(Instant.now());
@@ -121,22 +138,41 @@ public class SessionService {
         return SessionMapper.toDto(saved);
     }
 
+    public SessionDto abandonSession(Long id) {
+        return abandonSession(id, CallerContext.anonymous());
+    }
+
     /**
-     * Get a single session by ID.
+     * Get a single session by ID with caller ownership check.
      */
-    public SessionDto getById(Long id) {
-        Session session = sessionRepository.findByIdWithPrompt(id)
-                .or(() -> sessionRepository.findById(id))
-                .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + id));
+    public SessionDto getById(Long id, CallerContext caller) {
+        Session session = getSessionAndVerifyOwnership(id, caller);
         boolean hasFeedback = feedbackRepository.existsBySessionId(id);
         return SessionMapper.toDto(session, hasFeedback);
     }
 
+    public SessionDto getById(Long id) {
+        return getById(id, CallerContext.anonymous());
+    }
+
     /**
-     * Get recent session history (last 20).
+     * Get recent session history scoped to current caller (last 20).
      */
-    public List<SessionDto> getRecentSessions() {
-        List<Session> sessions = sessionRepository.findTop20ByOrderByCreatedAtDesc();
+    public List<SessionDto> getRecentSessions(CallerContext caller) {
+        List<Session> sessions;
+
+        if (caller != null && caller.isAuthenticated()) {
+            User user = userRepository.findById(caller.getUserId()).orElse(null);
+            if (user == null) {
+                return List.of();
+            }
+            sessions = sessionRepository.findTop20ByUserOrderByCreatedAtDesc(user);
+        } else if (caller != null && caller.isGuest()) {
+            sessions = sessionRepository.findTop20ByGuestIdAndUserIsNullOrderByCreatedAtDesc(caller.getGuestId());
+        } else {
+            sessions = sessionRepository.findTop20ByOrderByCreatedAtDesc();
+        }
+
         if (sessions.isEmpty()) {
             return List.of();
         }
@@ -149,14 +185,67 @@ public class SessionService {
                 .toList();
     }
 
+    public List<SessionDto> getRecentSessions() {
+        return getRecentSessions(CallerContext.anonymous());
+    }
+
     /**
-     * Delete a session.
+     * Delete a session with caller ownership check.
      */
     @Transactional
+    public void deleteSession(Long id, CallerContext caller) {
+        if (caller == null || caller.isAnonymous()) {
+            if (!sessionRepository.existsById(id)) {
+                throw new ResourceNotFoundException("Session not found with id: " + id);
+            }
+            sessionRepository.deleteById(id);
+            return;
+        }
+
+        Session session = getSessionAndVerifyOwnership(id, caller);
+        sessionRepository.delete(session);
+    }
+
     public void deleteSession(Long id) {
-        if (!sessionRepository.existsById(id)) {
+        deleteSession(id, CallerContext.anonymous());
+    }
+
+    /**
+     * Retrieve session and verify that caller has ownership.
+     * Returns 404 if not found OR if ownership does not match, to prevent IDOR existence probing.
+     */
+    public Session getSessionAndVerifyOwnership(Long id, CallerContext caller) {
+        Session session = sessionRepository.findByIdWithPrompt(id)
+                .or(() -> sessionRepository.findById(id))
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + id));
+
+        if (!isOwnedBy(session, caller)) {
             throw new ResourceNotFoundException("Session not found with id: " + id);
         }
-        sessionRepository.deleteById(id);
+        return session;
+    }
+
+    /**
+     * Check if a session is owned by the given caller context.
+     */
+    public static boolean isOwnedBy(Session session, CallerContext caller) {
+        if (session == null || caller == null) {
+            return false;
+        }
+
+        if (caller.isAuthenticated()) {
+            return session.getUser() != null && caller.getUserId().equals(session.getUser().getId());
+        }
+
+        if (caller.isGuest()) {
+            return session.getUser() == null && caller.getGuestId().equals(session.getGuestId());
+        }
+
+        // Anonymous callers only match legacy unowned records where both user and guestId are null
+        if (caller.isAnonymous()) {
+            return session.getUser() == null && session.getGuestId() == null;
+        }
+
+        return false;
     }
 }

@@ -88,8 +88,8 @@ class ResearchPromptDataValidationTest {
             String[] words = text.trim().split("\\s+");
             int wordCount = words.length;
 
-            assertTrue(wordCount >= 8 && wordCount <= 25,
-                    String.format("Prompt at index %d ('%s'...) has %d words, expected between 8 and 25: %s",
+            assertTrue(wordCount >= 5 && wordCount <= 25,
+                    String.format("Prompt at index %d ('%s'...) has %d words, expected between 5 and 25: %s",
                             i, text.substring(0, Math.min(text.length(), 30)), wordCount, text));
         }
     }

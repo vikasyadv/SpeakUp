@@ -3,10 +3,13 @@ package com.speakup.controller;
 import com.speakup.dto.SessionCompleteDto;
 import com.speakup.dto.SessionCreateDto;
 import com.speakup.dto.SessionDto;
+import com.speakup.security.CallerContext;
+import com.speakup.security.UserPrincipal;
 import com.speakup.service.SessionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,36 +25,58 @@ public class SessionController {
     }
 
     @PostMapping
-    public ResponseEntity<SessionDto> createSession(@Valid @RequestBody SessionCreateDto dto) {
-        SessionDto session = sessionService.createSession(dto);
+    public ResponseEntity<SessionDto> createSession(
+            @Valid @RequestBody SessionCreateDto dto,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Guest-Id", required = false) String guestId) {
+        CallerContext caller = CallerContext.resolve(principal, guestId);
+        SessionDto session = sessionService.createSession(dto, caller);
         return ResponseEntity.status(HttpStatus.CREATED).body(session);
     }
 
     @PatchMapping("/{id}/complete")
     public ResponseEntity<SessionDto> completeSession(
             @PathVariable Long id,
-            @RequestBody(required = false) SessionCompleteDto dto) {
-        return ResponseEntity.ok(sessionService.completeSession(id, dto));
+            @RequestBody(required = false) SessionCompleteDto dto,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Guest-Id", required = false) String guestId) {
+        CallerContext caller = CallerContext.resolve(principal, guestId);
+        return ResponseEntity.ok(sessionService.completeSession(id, dto, caller));
     }
 
     @PatchMapping("/{id}/abandon")
-    public ResponseEntity<SessionDto> abandonSession(@PathVariable Long id) {
-        return ResponseEntity.ok(sessionService.abandonSession(id));
+    public ResponseEntity<SessionDto> abandonSession(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Guest-Id", required = false) String guestId) {
+        CallerContext caller = CallerContext.resolve(principal, guestId);
+        return ResponseEntity.ok(sessionService.abandonSession(id, caller));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SessionDto> getSession(@PathVariable Long id) {
-        return ResponseEntity.ok(sessionService.getById(id));
+    public ResponseEntity<SessionDto> getSession(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Guest-Id", required = false) String guestId) {
+        CallerContext caller = CallerContext.resolve(principal, guestId);
+        return ResponseEntity.ok(sessionService.getById(id, caller));
     }
 
     @GetMapping("/recent")
-    public ResponseEntity<List<SessionDto>> getRecentSessions() {
-        return ResponseEntity.ok(sessionService.getRecentSessions());
+    public ResponseEntity<List<SessionDto>> getRecentSessions(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Guest-Id", required = false) String guestId) {
+        CallerContext caller = CallerContext.resolve(principal, guestId);
+        return ResponseEntity.ok(sessionService.getRecentSessions(caller));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSession(@PathVariable Long id) {
-        sessionService.deleteSession(id);
+    public ResponseEntity<Void> deleteSession(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Guest-Id", required = false) String guestId) {
+        CallerContext caller = CallerContext.resolve(principal, guestId);
+        sessionService.deleteSession(id, caller);
         return ResponseEntity.noContent().build();
     }
 }

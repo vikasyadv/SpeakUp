@@ -9,6 +9,8 @@ import DebatePage from './features/debate/DebatePage'
 import StoryPage from './features/story/StoryPage'
 import BookshelfPage from './features/bookshelf/BookshelfPage'
 import HistoryPage from './features/history/HistoryPage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 
 export default function App() {
   return (
@@ -27,6 +29,8 @@ export default function App() {
           <Route path="/story/session/:sessionId" element={<SpeakingResultPage />} />
           <Route path="/bookshelf" element={<BookshelfPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
         </Routes>
       </PageContainer>
     </>

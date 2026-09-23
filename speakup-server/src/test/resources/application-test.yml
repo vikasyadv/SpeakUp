@@ -17,3 +17,7 @@ gemini:
     key: test-dummy-key
     url: https://generativelanguage.googleapis.com/v1beta/models
   model: gemini-3.6-flash
+
+jwt:
+  secret: test-jwt-secret-key-must-be-at-least-256-bits-long-for-hmac-sha256
+  expiration-hours: 24
