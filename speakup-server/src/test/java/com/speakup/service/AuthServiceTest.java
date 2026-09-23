@@ -3,6 +3,7 @@ package com.speakup.service;
 import com.speakup.dto.AuthResponseDto;
 import com.speakup.dto.LoginRequestDto;
 import com.speakup.dto.RegisterRequestDto;
+import com.speakup.dto.UpdateProfileRequestDto;
 import com.speakup.dto.UserDto;
 import com.speakup.model.Bookmark;
 import com.speakup.model.Category;
@@ -258,5 +259,51 @@ class AuthServiceTest {
         verify(bookmarkRepository).save(newGuestBookmark);
         assertThat(newGuestBookmark.getUser()).isEqualTo(user);
         assertThat(newGuestBookmark.getGuestId()).isNull();
+    }
+
+    @Test
+    @DisplayName("updateProfile updates user display name, trims whitespace, and returns updated UserDto")
+    void updateProfile_success() {
+        User user = new User("user@example.com", "$2a$10$hash", "Old Name", Role.ROLE_USER);
+        user.setId(10L);
+        UserPrincipal principal = UserPrincipal.create(user);
+
+        when(userRepository.findById(10L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateProfileRequestDto request = new UpdateProfileRequestDto("   Brand New Name   ");
+        UserDto result = authService.updateProfile(principal, request);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getDisplayName()).isEqualTo("Brand New Name");
+        assertThat(result.getEmail()).isEqualTo("user@example.com");
+        assertThat(user.getDisplayName()).isEqualTo("Brand New Name");
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("updateProfile throws BadCredentialsException when principal is null")
+    void updateProfile_nullPrincipal_throwsBadCredentialsException() {
+        UpdateProfileRequestDto request = new UpdateProfileRequestDto("Any Name");
+
+        assertThatThrownBy(() -> authService.updateProfile(null, request))
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessage("Unauthenticated");
+    }
+
+    @Test
+    @DisplayName("updateProfile throws IllegalArgumentException when displayName is blank")
+    void updateProfile_blankDisplayName_throwsIllegalArgumentException() {
+        User user = new User("user@example.com", "$2a$10$hash", "Old Name", Role.ROLE_USER);
+        user.setId(10L);
+        UserPrincipal principal = UserPrincipal.create(user);
+
+        when(userRepository.findById(10L)).thenReturn(Optional.of(user));
+
+        UpdateProfileRequestDto request = new UpdateProfileRequestDto("    ");
+
+        assertThatThrownBy(() -> authService.updateProfile(principal, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Display name cannot be blank");
     }
 }

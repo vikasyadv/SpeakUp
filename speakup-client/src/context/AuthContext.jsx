@@ -101,6 +101,12 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
+  const updateProfile = useCallback(async (profileData) => {
+    const updatedUser = await authApi.updateProfile(profileData)
+    setUser(updatedUser)
+    return updatedUser
+  }, [])
+
   const value = {
     user,
     token,
@@ -109,6 +115,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    updateProfile,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -3,6 +3,7 @@ package com.speakup.controller;
 import com.speakup.dto.AuthResponseDto;
 import com.speakup.dto.LoginRequestDto;
 import com.speakup.dto.RegisterRequestDto;
+import com.speakup.dto.UpdateProfileRequestDto;
 import com.speakup.dto.UserDto;
 import com.speakup.security.UserPrincipal;
 import com.speakup.service.AuthService;
@@ -41,6 +42,14 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserDto> getCurrentUser(@AuthenticationPrincipal UserPrincipal principal) {
         UserDto user = authService.getCurrentUser(principal);
+        return ResponseEntity.ok(user);
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<UserDto> updateProfile(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody UpdateProfileRequestDto request) {
+        UserDto user = authService.updateProfile(principal, request);
         return ResponseEntity.ok(user);
     }
 }

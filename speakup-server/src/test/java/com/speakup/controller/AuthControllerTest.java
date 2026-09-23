@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -295,5 +296,117 @@ class AuthControllerTest {
         Session updatedSession = sessionRepository.findById(guestSession.getId()).orElseThrow();
         assertThat(updatedSession.getUser().getId()).isEqualTo(user.getId());
         assertThat(updatedSession.getGuestId()).isNull();
+    }
+
+    @Test
+    @DisplayName("PATCH /me updates displayName for authenticated user, trims whitespace, and returns updated UserDto")
+    void updateProfile_success() throws Exception {
+        User user = new User("updateprofile@example.com", passwordEncoder.encode("Password123!"), "Original Name", Role.ROLE_USER);
+        user = userRepository.saveAndFlush(user);
+
+        String token = tokenProvider.generateToken(user.getEmail(), user.getId(), user.getRole().name());
+
+        String updatePayload = "{\"displayName\": \"  Updated Display Name  \"}";
+
+        mockMvc.perform(patch("/api/v1/auth/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updatePayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(user.getId()))
+                .andExpect(jsonPath("$.email").value("updateprofile@example.com"))
+                .andExpect(jsonPath("$.displayName").value("Updated Display Name"))
+                .andExpect(jsonPath("$.role").value("ROLE_USER"));
+
+        User reloaded = userRepository.findById(user.getId()).orElseThrow();
+        assertThat(reloaded.getDisplayName()).isEqualTo("Updated Display Name");
+        assertThat(reloaded.getEmail()).isEqualTo("updateprofile@example.com");
+
+        // Existing JWT remains usable
+        mockMvc.perform(get("/api/v1/auth/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value("Updated Display Name"));
+    }
+
+    @Test
+    @DisplayName("PATCH /me returns 401 Unauthorized when unauthenticated")
+    void updateProfile_unauthenticated_returns401() throws Exception {
+        String updatePayload = "{\"displayName\": \"New Name\"}";
+
+        mockMvc.perform(patch("/api/v1/auth/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updatePayload))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    @DisplayName("PATCH /me returns 400 Bad Request when displayName is blank or whitespace")
+    void updateProfile_blankDisplayName_returns400() throws Exception {
+        User user = new User("blankname@example.com", passwordEncoder.encode("Password123!"), "Before Name", Role.ROLE_USER);
+        user = userRepository.saveAndFlush(user);
+
+        String token = tokenProvider.generateToken(user.getEmail(), user.getId(), user.getRole().name());
+
+        String blankPayload = "{\"displayName\": \"   \"}";
+
+        mockMvc.perform(patch("/api/v1/auth/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(blankPayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("PATCH /me returns 400 Bad Request when displayName exceeds 50 characters")
+    void updateProfile_tooLongDisplayName_returns400() throws Exception {
+        User user = new User("longname@example.com", passwordEncoder.encode("Password123!"), "Before Name", Role.ROLE_USER);
+        user = userRepository.saveAndFlush(user);
+
+        String token = tokenProvider.generateToken(user.getEmail(), user.getId(), user.getRole().name());
+
+        String longName = "A".repeat(51);
+        String payload = "{\"displayName\": \"" + longName + "\"}";
+
+        mockMvc.perform(patch("/api/v1/auth/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("PATCH /me ignores extra fields and does NOT allow changing email, role, or password")
+    void updateProfile_extraFieldsIgnored_doesNotChangeEmailOrRoleOrPassword() throws Exception {
+        User user = new User("securitytest@example.com", passwordEncoder.encode("Password123!"), "Security Original", Role.ROLE_USER);
+        user = userRepository.saveAndFlush(user);
+
+        String token = tokenProvider.generateToken(user.getEmail(), user.getId(), user.getRole().name());
+
+        String maliciousPayload = "{" +
+                "\"displayName\": \"Valid Name\"," +
+                "\"email\": \"hacked@example.com\"," +
+                "\"role\": \"ROLE_ADMIN\"," +
+                "\"password\": \"NewPassword!\"," +
+                "\"id\": 999" +
+                "}";
+
+        mockMvc.perform(patch("/api/v1/auth/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(maliciousPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(user.getId()))
+                .andExpect(jsonPath("$.email").value("securitytest@example.com"))
+                .andExpect(jsonPath("$.displayName").value("Valid Name"))
+                .andExpect(jsonPath("$.role").value("ROLE_USER"));
+
+        User reloaded = userRepository.findById(user.getId()).orElseThrow();
+        assertThat(reloaded.getEmail()).isEqualTo("securitytest@example.com");
+        assertThat(reloaded.getRole()).isEqualTo(Role.ROLE_USER);
+        assertThat(passwordEncoder.matches("Password123!", reloaded.getPasswordHash())).isTrue();
     }
 }

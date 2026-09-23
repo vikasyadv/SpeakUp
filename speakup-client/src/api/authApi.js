@@ -46,3 +46,15 @@ export async function getCurrentUser() {
   const response = await axiosClient.get('/auth/me')
   return response.data
 }
+
+/**
+ * Update authenticated user profile.
+ * Bearer token is automatically attached by axiosClient interceptor.
+ *
+ * @param {{ displayName: string }} data
+ * @returns {Promise<{ id: number, email: string, displayName: string, role: string, createdAt: string }>}
+ */
+export async function updateProfile(data) {
+  const response = await axiosClient.patch('/auth/me', data)
+  return response.data
+}

@@ -3,6 +3,7 @@ package com.speakup.service;
 import com.speakup.dto.AuthResponseDto;
 import com.speakup.dto.LoginRequestDto;
 import com.speakup.dto.RegisterRequestDto;
+import com.speakup.dto.UpdateProfileRequestDto;
 import com.speakup.dto.UserDto;
 import com.speakup.exception.ResourceNotFoundException;
 import com.speakup.model.Bookmark;
@@ -116,6 +117,33 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + principal.getId()));
 
         return UserDto.from(user);
+    }
+
+    @Transactional
+    public UserDto updateProfile(UserPrincipal principal, UpdateProfileRequestDto request) {
+        if (principal == null || principal.getId() == null) {
+            throw new BadCredentialsException("Unauthenticated");
+        }
+
+        User user = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + principal.getId()));
+
+        String trimmedDisplayName = request != null && request.getDisplayName() != null
+                ? request.getDisplayName().trim()
+                : "";
+
+        if (trimmedDisplayName.isEmpty()) {
+            throw new IllegalArgumentException("Display name cannot be blank");
+        }
+        if (trimmedDisplayName.length() > 50) {
+            throw new IllegalArgumentException("Display name must be between 1 and 50 characters");
+        }
+
+        user.setDisplayName(trimmedDisplayName);
+        User savedUser = userRepository.save(user);
+
+        log.info("Profile updated successfully for userId={}: displayName='{}'", savedUser.getId(), savedUser.getDisplayName());
+        return UserDto.from(savedUser);
     }
 
     @Transactional
