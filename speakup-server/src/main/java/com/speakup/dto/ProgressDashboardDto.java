@@ -17,6 +17,16 @@ public class ProgressDashboardDto {
     private ModeBreakdownDto modeBreakdown;
     private List<ScoreHistoryPointDto> scoreHistory;
     private List<RecentSessionActivityDto> recentActivity;
+    private int activeDaysLast7;
+    private int activeDaysLast14;
+
+    public ProgressDashboardDto(ProgressSummaryDto summary,
+                                SkillMetricsDto skills,
+                                ModeBreakdownDto modeBreakdown,
+                                List<ScoreHistoryPointDto> scoreHistory,
+                                List<RecentSessionActivityDto> recentActivity) {
+        this(summary, skills, modeBreakdown, scoreHistory, recentActivity, 0, 0);
+    }
 
     public static ProgressDashboardDto empty() {
         return new ProgressDashboardDto(
@@ -24,7 +34,9 @@ public class ProgressDashboardDto {
                 new SkillMetricsDto(null, null, null),
                 new ModeBreakdownDto(0, 0, 0, 0),
                 List.of(),
-                List.of()
+                List.of(),
+                0,
+                0
         );
     }
 }

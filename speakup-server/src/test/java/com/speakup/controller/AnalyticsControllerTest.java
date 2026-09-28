@@ -53,6 +53,12 @@ class AnalyticsControllerTest {
     private FeedbackRepository feedbackRepository;
 
     @Autowired
+    private com.speakup.repository.PromptRepository promptRepository;
+
+    @Autowired
+    private com.speakup.repository.CategoryRepository categoryRepository;
+
+    @Autowired
     private AuthService authService;
 
     private User userAlice;
@@ -89,7 +95,9 @@ class AnalyticsControllerTest {
                 .andExpect(jsonPath("$.skills.averageClarity").doesNotExist())
                 .andExpect(jsonPath("$.modeBreakdown.offTheCuffCount", is(0)))
                 .andExpect(jsonPath("$.scoreHistory", hasSize(0)))
-                .andExpect(jsonPath("$.recentActivity", hasSize(0)));
+                .andExpect(jsonPath("$.recentActivity", hasSize(0)))
+                .andExpect(jsonPath("$.activeDaysLast7", is(0)))
+                .andExpect(jsonPath("$.activeDaysLast14", is(0)));
     }
 
     @Test
@@ -116,7 +124,9 @@ class AnalyticsControllerTest {
                 .andExpect(jsonPath("$.scoreHistory", hasSize(1)))
                 .andExpect(jsonPath("$.scoreHistory[0].overallScore", is(85)))
                 .andExpect(jsonPath("$.recentActivity", hasSize(1)))
-                .andExpect(jsonPath("$.recentActivity[0].promptText", is("Guest 1 prompt")));
+                .andExpect(jsonPath("$.recentActivity[0].promptText", is("Guest 1 prompt")))
+                .andExpect(jsonPath("$.activeDaysLast7", is(1)))
+                .andExpect(jsonPath("$.activeDaysLast14", is(1)));
     }
 
     @Test
@@ -142,7 +152,9 @@ class AnalyticsControllerTest {
                 .andExpect(jsonPath("$.skills.averageStructure", is(89.0)))
                 .andExpect(jsonPath("$.modeBreakdown.debateCount", is(1)))
                 .andExpect(jsonPath("$.modeBreakdown.storyCount", is(0)))
-                .andExpect(jsonPath("$.recentActivity[0].promptText", is("Alice debate")));
+                .andExpect(jsonPath("$.recentActivity[0].promptText", is("Alice debate")))
+                .andExpect(jsonPath("$.activeDaysLast7", is(1)))
+                .andExpect(jsonPath("$.activeDaysLast14", is(1)));
     }
 
     @Test
@@ -250,6 +262,29 @@ class AnalyticsControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.summary.totalCompletedSessions", is(0)))
                 .andExpect(jsonPath("$.scoreHistory", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("Recent activity includes promptId when prompt is linked to session and null when unlinked")
+    void getProgress_promptIdInRecentActivity_returnedWhenPromptAssociated() throws Exception {
+        Category category = categoryRepository.findAll().stream().findFirst()
+                .orElseGet(() -> categoryRepository.save(new Category("General", "General topics")));
+
+        Prompt prompt = new Prompt();
+        prompt.setText("Debate prompt with ID");
+        prompt.setMode(Mode.DEBATE);
+        prompt.setCategory(category);
+        Prompt savedPrompt = promptRepository.save(prompt);
+
+        Session sessionWithPrompt = createCompletedSession(userAlice, null, Mode.DEBATE, 90, 90, "Debate prompt with ID");
+        sessionWithPrompt.setPrompt(savedPrompt);
+        sessionRepository.save(sessionWithPrompt);
+
+        mockMvc.perform(get("/api/v1/analytics/progress")
+                        .header("Authorization", "Bearer " + tokenAlice)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recentActivity[0].promptId", is(savedPrompt.getId().intValue())));
     }
 
     private Session createCompletedSession(User user, String guestId, Mode mode, int duration, int actualDuration, String promptText) {

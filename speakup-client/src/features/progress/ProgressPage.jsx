@@ -46,6 +46,280 @@ function formatMode(mode) {
 }
 
 // ---------------------------------------------------------------------------
+// Insight helpers — pure functions, no side effects, no new API calls
+// ---------------------------------------------------------------------------
+
+/**
+ * Derives the strongest and weakest skill from the three skill averages.
+ *
+ * Rules:
+ * - Returns null for both if all three averages are null (no feedback yet).
+ * - Considers only the skills that are non-null.
+ * - Ties (same score) for strongest: clarity beats relevance beats structure.
+ * - Ties for weakest: structure beats relevance beats clarity (reverse order).
+ * - If only one skill is non-null, strongest and weakest both point to that skill.
+ *
+ * @param {{ averageClarity: number|null, averageRelevance: number|null, averageStructure: number|null }} skills
+ * @returns {{ strongest: { label: string, value: number }|null, weakest: { label: string, value: number }|null }}
+ */
+function computeSkillInsights(skills) {
+  const candidates = [
+    { label: 'Clarity', value: skills?.averageClarity },
+    { label: 'Relevance', value: skills?.averageRelevance },
+    { label: 'Structure', value: skills?.averageStructure },
+  ].filter((s) => s.value != null)
+
+  if (candidates.length === 0) return { strongest: null, weakest: null }
+
+  // Strongest: highest value; ties resolved by insertion order (first wins)
+  const strongest = candidates.reduce((best, s) => (s.value > best.value ? s : best))
+
+  // Weakest: lowest value; ties resolved by reverse insertion order (last wins)
+  const weakest = candidates.reduce((worst, s) => (s.value < worst.value ? s : worst))
+
+  return { strongest, weakest }
+}
+
+/**
+ * Computes a performance trend from the chronological score history.
+ *
+ * Algorithm:
+ * - Requires at least 4 scored sessions. Fewer → 'insufficient'.
+ * - Splits the array into two equal halves (first half = earlier, second half = recent).
+ * - Computes the mean overall score of each half.
+ * - Difference threshold: ±3 points determines improving vs declining vs stable.
+ *
+ * Returns one of: 'improving' | 'declining' | 'stable' | 'insufficient'
+ *
+ * @param {Array<{ overallScore: number }>} scoreHistory - chronological ASC
+ * @returns {'improving'|'declining'|'stable'|'insufficient'}
+ */
+function computeScoreTrend(scoreHistory) {
+  if (!scoreHistory || scoreHistory.length < 4) return 'insufficient'
+
+  const mid = Math.floor(scoreHistory.length / 2)
+  const early = scoreHistory.slice(0, mid)
+  const recent = scoreHistory.slice(scoreHistory.length - mid)
+
+  const avg = (arr) => arr.reduce((sum, p) => sum + p.overallScore, 0) / arr.length
+
+  const earlyAvg = avg(early)
+  const recentAvg = avg(recent)
+  const delta = recentAvg - earlyAvg
+
+  if (delta > 3) return 'improving'
+  if (delta < -3) return 'declining'
+  return 'stable'
+}
+
+const TREND_CONFIG = {
+  improving: { symbol: '↑', label: 'Improving', className: 'trendImproving' },
+  declining: { symbol: '↓', label: 'Declining', className: 'trendDeclining' },
+  stable: { symbol: '→', label: 'Stable', className: 'trendStable' },
+  insufficient: { symbol: '→', label: 'Not enough data', className: 'trendStable' },
+}
+
+/**
+ * Computes a deterministic recommended practice action based on skill insights.
+ *
+ * Mapping rules:
+ * - If no reviewed sessions: neutral "Get Your First Insight" action pointing to Off the Cuff.
+ * - If weakest skill is Structure: recommend Research mode (dedicated preparation & structured outlines).
+ * - If weakest skill is Relevance: recommend Debate mode (defending a specific stance on-topic).
+ * - If weakest skill is Clarity: recommend Off the Cuff mode (concise, spontaneous articulation).
+ * - If all skills are even (or tie where strongest === weakest): recommend Story mode (balanced narrative delivery).
+ *
+ * @param {{
+ *   hasReviewedSessions: boolean,
+ *   strongestSkill: { label: string, value: number }|null,
+ *   weakestSkill: { label: string, value: number }|null
+ * }} params
+ * @returns {{
+ *   badge: string,
+ *   icon: string,
+ *   title: string,
+ *   reason: string,
+ *   modeName: string,
+ *   actionText: string,
+ *   buttonLabel: string,
+ *   path: string
+ * }}
+ */
+function computeRecommendation({ hasReviewedSessions, strongestSkill, weakestSkill }) {
+  if (!hasReviewedSessions) {
+    return {
+      badge: 'Getting Started',
+      icon: '💡',
+      title: 'Get Your First Insight',
+      reason:
+        'Complete a practice session and generate AI feedback to see which skills you can focus on.',
+      modeName: 'Off the Cuff',
+      actionText: 'Practice impromptu speaking without preparation.',
+      buttonLabel: 'Start Off the Cuff Practice',
+      path: '/off-the-cuff',
+    }
+  }
+
+  // If skills are tied or single skill
+  const hasDistinctWeakest =
+    weakestSkill &&
+    strongestSkill &&
+    weakestSkill.label !== strongestSkill.label
+
+  const targetSkill = hasDistinctWeakest ? weakestSkill.label : 'Balanced'
+
+  switch (targetSkill) {
+    case 'Structure':
+      return {
+        badge: 'Recommended Action',
+        icon: '🔍',
+        title: 'Focus on Structure',
+        reason:
+          'Your recent scores show Structure as the area with the most room to develop.',
+        modeName: 'Research',
+        actionText:
+          'Practice organizing ideas and supporting your response with preparation notes.',
+        buttonLabel: 'Start Research Practice',
+        path: '/research',
+      }
+    case 'Relevance':
+      return {
+        badge: 'Recommended Action',
+        icon: '⚔️',
+        title: 'Focus on Relevance',
+        reason:
+          'Your recent scores show Relevance as the area with the most room to develop.',
+        modeName: 'Debate',
+        actionText:
+          'Practice defending a clear stance and keeping your arguments directly tied to the topic.',
+        buttonLabel: 'Start Debate Practice',
+        path: '/debate',
+      }
+    case 'Clarity':
+      return {
+        badge: 'Recommended Action',
+        icon: '⚡',
+        title: 'Focus on Clarity',
+        reason:
+          'Your recent scores show Clarity as the area with the most room to develop.',
+        modeName: 'Off the Cuff',
+        actionText:
+          'Practice expressing ideas concisely and articulating thoughts without over-preparing.',
+        buttonLabel: 'Start Off the Cuff Practice',
+        path: '/off-the-cuff',
+      }
+    default:
+      // When all skills are even or tied
+      return {
+        badge: 'Recommended Action',
+        icon: '📖',
+        title: 'Develop Narrative Flow',
+        reason:
+          'Your skill scores are well-balanced across clarity, relevance, and structure.',
+        modeName: 'Story',
+        actionText:
+          'Practice storytelling to combine structure, creativity, and expressive delivery.',
+        buttonLabel: 'Start Story Practice',
+        path: '/story',
+      }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SkillSparkline — lightweight per-skill SVG trendline
+// ---------------------------------------------------------------------------
+const SPARKLINE_H = 32
+const SPARKLINE_PAD = { top: 4, right: 6, bottom: 4, left: 6 }
+
+function SkillSparkline({ data, skillName }) {
+  const containerRef = useRef(null)
+  const [width, setWidth] = useState(120)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          setWidth(entry.contentRect.width)
+        }
+      }
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  if (!data || data.length === 0) return null
+
+  const innerW = Math.max(width - SPARKLINE_PAD.left - SPARKLINE_PAD.right, 10)
+  const innerH = SPARKLINE_H - SPARKLINE_PAD.top - SPARKLINE_PAD.bottom
+
+  const clamp = (val) => Math.max(0, Math.min(100, val))
+  const toY = (score) => SPARKLINE_PAD.top + (1 - clamp(score) / 100) * innerH
+
+  const toX = (i) => {
+    if (data.length === 1) return SPARKLINE_PAD.left + innerW / 2
+    return SPARKLINE_PAD.left + (i / (data.length - 1)) * innerW
+  }
+
+  const polylinePoints = data.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ')
+  const midY = toY(50)
+
+  return (
+    <div ref={containerRef} className={styles.sparklineContainer}>
+      <div className={styles.sparklineHeader}>
+        <span className={styles.sparklineLabel}>{skillName ? `${skillName} Trend` : 'Trend'}</span>
+        <span className={styles.sparklineSessionCount}>
+          {data.length} session{data.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+      <svg
+        className={styles.sparklineSvg}
+        width={width}
+        height={SPARKLINE_H}
+        viewBox={`0 0 ${width} ${SPARKLINE_H}`}
+        aria-hidden="true"
+        focusable="false"
+      >
+        {/* Subtle 50% guideline for reference */}
+        <line
+          x1={SPARKLINE_PAD.left}
+          y1={midY}
+          x2={width - SPARKLINE_PAD.right}
+          y2={midY}
+          className={styles.sparklineGuide}
+        />
+
+        {data.length === 1 ? (
+          /* Single point: centered dot without misleading line */
+          <circle
+            cx={toX(0)}
+            cy={toY(data[0])}
+            r="3.5"
+            className={styles.sparklineDot}
+          />
+        ) : (
+          <>
+            {/* Trend line */}
+            <polyline
+              points={polylinePoints}
+              className={styles.sparklineLine}
+            />
+            {/* End dot showing latest score */}
+            <circle
+              cx={toX(data.length - 1)}
+              cy={toY(data[data.length - 1])}
+              r="3"
+              className={styles.sparklineDot}
+            />
+          </>
+        )}
+      </svg>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // ScoreChart — dependency-free SVG line chart
 // ---------------------------------------------------------------------------
 const CHART_PAD = { top: 16, right: 16, bottom: 24, left: 36 }
@@ -272,9 +546,54 @@ export default function ProgressPage() {
 
   const scoreHistory = data?.scoreHistory || []
   const recentActivity = data?.recentActivity || []
+  const activeDaysLast7 = data?.activeDaysLast7 ?? 0
+  const activeDaysLast14 = data?.activeDaysLast14 ?? 0
 
   const hasSessions = summary.totalCompletedSessions > 0
   const hasReviewedSessions = summary.reviewedSessionsCount > 0
+
+  // Personalized Insights — computed from existing API data, no new fetch
+  const { strongest: strongestSkill, weakest: weakestSkill } = computeSkillInsights(skills)
+  const trendKey = computeScoreTrend(scoreHistory)
+  const trend = TREND_CONFIG[trendKey]
+
+  // Recommended Practice Action — deterministic mapping from skills to existing practice modes
+  const recommendation = computeRecommendation({
+    hasReviewedSessions,
+    strongestSkill,
+    weakestSkill,
+  })
+
+  // Per-skill chronological score histories for sparklines
+  const clarityHistory = scoreHistory
+    .map((p) => p.clarityScore ?? p.clarity)
+    .filter((v) => typeof v === 'number' && !isNaN(v))
+  const relevanceHistory = scoreHistory
+    .map((p) => p.relevanceScore ?? p.relevance)
+    .filter((v) => typeof v === 'number' && !isNaN(v))
+  const structureHistory = scoreHistory
+    .map((p) => p.structureScore ?? p.structure)
+    .filter((v) => typeof v === 'number' && !isNaN(v))
+
+  const handlePracticeAgain = (item) => {
+    if (!item?.promptId) return
+
+    const promptObj = {
+      id: item.promptId,
+      text: item.promptText,
+      mode: item.mode,
+    }
+
+    const modeRoutes = {
+      STORY: '/story',
+      DEBATE: '/debate',
+      RESEARCH: '/research',
+      OFF_THE_CUFF: '/off-the-cuff',
+    }
+
+    const targetRoute = modeRoutes[item.mode] || '/off-the-cuff'
+    navigate(targetRoute, { state: { prompt: promptObj } })
+  }
 
   return (
     <div className={styles.page}>
@@ -345,6 +664,41 @@ export default function ProgressPage() {
             </div>
           </div>
 
+          {/* Practice Activity / Streak Row */}
+          <div className={styles.activityStatsGrid}>
+            <div className={styles.activityStatCard}>
+              <div className={styles.activityStatTop}>
+                <span className={styles.activityStatLabel}>7-Day Practice Activity</span>
+                <span className={styles.activityStatBadge}>Last 7 Days</span>
+              </div>
+              <div className={styles.activityStatValueRow}>
+                <span className={styles.activityStatValue}>{activeDaysLast7}</span>
+                <span className={styles.activityStatTotal}>/ 7 days active</span>
+              </div>
+              <span className={styles.activityStatHint}>
+                {activeDaysLast7 === 0
+                  ? 'No practice sessions in the last 7 days.'
+                  : `${activeDaysLast7} distinct day${activeDaysLast7 !== 1 ? 's' : ''} practiced this week`}
+              </span>
+            </div>
+
+            <div className={styles.activityStatCard}>
+              <div className={styles.activityStatTop}>
+                <span className={styles.activityStatLabel}>14-Day Practice Activity</span>
+                <span className={styles.activityStatBadge}>Last 14 Days</span>
+              </div>
+              <div className={styles.activityStatValueRow}>
+                <span className={styles.activityStatValue}>{activeDaysLast14}</span>
+                <span className={styles.activityStatTotal}>/ 14 days active</span>
+              </div>
+              <span className={styles.activityStatHint}>
+                {activeDaysLast14 === 0
+                  ? 'No practice sessions in the last 14 days.'
+                  : `${activeDaysLast14} distinct day${activeDaysLast14 !== 1 ? 's' : ''} practiced in the past 2 weeks`}
+              </span>
+            </div>
+          </div>
+
           {!hasReviewedSessions && (
             <div className={styles.noticeBanner}>
               <span className={styles.noticeIcon} aria-hidden="true">✦</span>
@@ -357,6 +711,115 @@ export default function ProgressPage() {
               </div>
             </div>
           )}
+
+          {/* Personalized Insights */}
+          {hasReviewedSessions && (
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Personalized Insights</h2>
+                <span className={styles.sectionSubtitle}>
+                  Based on your AI-reviewed sessions
+                </span>
+              </div>
+
+              <div className={styles.insightGrid}>
+                {/* Strongest Skill */}
+                <div className={styles.insightCard}>
+                  <span className={styles.insightLabel}>Strongest Skill</span>
+                  {strongestSkill ? (
+                    <>
+                      <span className={styles.insightValue}>{strongestSkill.label}</span>
+                      <span className={styles.insightScore}>{strongestSkill.value} / 100</span>
+                    </>
+                  ) : (
+                    <span className={styles.insightEmpty}>Not enough feedback yet</span>
+                  )}
+                </div>
+
+                {/* Area to focus on */}
+                <div className={styles.insightCard}>
+                  <span className={styles.insightLabel}>Area to Focus On</span>
+                  {weakestSkill &&
+                  strongestSkill &&
+                  weakestSkill.label !== strongestSkill.label ? (
+                    <>
+                      <span className={styles.insightValue}>{weakestSkill.label}</span>
+                      <span className={styles.insightScore}>{weakestSkill.value} / 100</span>
+                    </>
+                  ) : weakestSkill ? (
+                    /* All skills tied or only one skill — no meaningful distinction */
+                    <span className={styles.insightEmpty}>All skills are even</span>
+                  ) : (
+                    <span className={styles.insightEmpty}>Not enough feedback yet</span>
+                  )}
+                </div>
+
+                {/* Performance Trend */}
+                <div className={styles.insightCard}>
+                  <span className={styles.insightLabel}>Performance Trend</span>
+                  <span className={`${styles.insightTrend} ${styles[trend.className]}`}>
+                    {trend.symbol} {trend.label}
+                  </span>
+                  {trendKey === 'insufficient' && (
+                    <span className={styles.insightTrendHint}>
+                      Need {Math.max(0, 4 - scoreHistory.length)} more reviewed session
+                      {4 - scoreHistory.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Recommended Practice Action */}
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Recommended Practice</h2>
+              <span className={styles.sectionSubtitle}>
+                Targeted practice based on your skill analysis
+              </span>
+            </div>
+
+            <div className={styles.recommendationCard}>
+              <div className={styles.recommendationTop}>
+                <span className={styles.recommendationIcon} aria-hidden="true">
+                  {recommendation.icon}
+                </span>
+                <div className={styles.recommendationContent}>
+                  <div className={styles.recommendationHeaderRow}>
+                    <span className={styles.recommendationBadge}>
+                      {recommendation.badge}
+                    </span>
+                    <h3 className={styles.recommendationTitle}>
+                      {recommendation.title}
+                    </h3>
+                  </div>
+                  <p className={styles.recommendationReason}>
+                    {recommendation.reason}
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.recommendationProposal}>
+                <span className={styles.recommendationModeLabel}>
+                  Try {recommendation.modeName}
+                </span>
+                <span className={styles.recommendationActionText}>
+                  {recommendation.actionText}
+                </span>
+              </div>
+
+              <div className={styles.recommendationActions}>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => navigate(recommendation.path)}
+                >
+                  {recommendation.buttonLabel}
+                </Button>
+              </div>
+            </div>
+          </section>
 
           {/* Skill Metrics */}
           <section className={styles.section}>
@@ -381,6 +844,7 @@ export default function ProgressPage() {
                     style={{ width: `${skills.averageClarity ?? 0}%` }}
                   />
                 </div>
+                <SkillSparkline data={clarityHistory} skillName="Clarity" />
               </div>
 
               <div className={styles.skillCard}>
@@ -396,6 +860,7 @@ export default function ProgressPage() {
                     style={{ width: `${skills.averageRelevance ?? 0}%` }}
                   />
                 </div>
+                <SkillSparkline data={relevanceHistory} skillName="Relevance" />
               </div>
 
               <div className={styles.skillCard}>
@@ -411,6 +876,7 @@ export default function ProgressPage() {
                     style={{ width: `${skills.averageStructure ?? 0}%` }}
                   />
                 </div>
+                <SkillSparkline data={structureHistory} skillName="Structure" />
               </div>
             </div>
           </section>
@@ -560,6 +1026,16 @@ export default function ProgressPage() {
                         <span className={styles.activityFeedbackBadge}>Reviewed</span>
                       ) : (
                         <span className={styles.activityFeedbackMissing}>No feedback</span>
+                      )}
+                      {item.promptId && (
+                        <button
+                          type="button"
+                          className={styles.practiceAgainBtn}
+                          onClick={() => handlePracticeAgain(item)}
+                          title={`Practice again in ${formatMode(item.mode)}`}
+                        >
+                          Practice Again →
+                        </button>
                       )}
                     </div>
                   </li>

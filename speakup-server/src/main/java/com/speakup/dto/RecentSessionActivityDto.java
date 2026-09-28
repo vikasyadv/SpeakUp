@@ -19,4 +19,11 @@ public class RecentSessionActivityDto {
     private int durationSeconds;
     private Integer overallScore;
     private boolean hasFeedback;
+    private Long promptId;
+
+    public RecentSessionActivityDto(Long sessionId, String promptText, String mode,
+                                    Instant completedAt, int durationSeconds,
+                                    Integer overallScore, boolean hasFeedback) {
+        this(sessionId, promptText, mode, completedAt, durationSeconds, overallScore, hasFeedback, null);
+    }
 }

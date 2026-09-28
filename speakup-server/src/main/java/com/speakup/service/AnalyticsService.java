@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -25,13 +27,23 @@ public class AnalyticsService {
     private final SessionRepository sessionRepository;
     private final FeedbackRepository feedbackRepository;
     private final UserRepository userRepository;
+    private final Clock clock;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AnalyticsService(SessionRepository sessionRepository,
                             FeedbackRepository feedbackRepository,
                             UserRepository userRepository) {
+        this(sessionRepository, feedbackRepository, userRepository, Clock.systemUTC());
+    }
+
+    public AnalyticsService(SessionRepository sessionRepository,
+                            FeedbackRepository feedbackRepository,
+                            UserRepository userRepository,
+                            Clock clock) {
         this.sessionRepository = sessionRepository;
         this.feedbackRepository = feedbackRepository;
         this.userRepository = userRepository;
+        this.clock = clock != null ? clock : Clock.systemUTC();
     }
 
     /**
@@ -144,6 +156,7 @@ public class AnalyticsService {
                     Feedback f = feedbackBySessionId.get(s.getId());
                     int duration = s.getActualDurationSeconds() != null ? s.getActualDurationSeconds() : s.getDurationSeconds();
                     Instant completedAt = s.getCompletedAt() != null ? s.getCompletedAt() : s.getCreatedAt();
+                    Long promptId = s.getPrompt() != null ? s.getPrompt().getId() : null;
                     return new RecentSessionActivityDto(
                             s.getId(),
                             s.getPromptText(),
@@ -151,12 +164,36 @@ public class AnalyticsService {
                             completedAt,
                             duration,
                             f != null ? f.getOverallScore() : null,
-                            f != null
+                            f != null,
+                            promptId
                     );
                 })
                 .toList();
 
-        return new ProgressDashboardDto(summary, skills, modeBreakdown, scoreHistory, recentActivity);
+        // 6. Active Days (distinct calendar days in last 7 and 14 days)
+        LocalDate today = LocalDate.now(clock);
+        LocalDate sevenDaysAgo = today.minusDays(7);
+        LocalDate fourteenDaysAgo = today.minusDays(14);
+
+        Set<LocalDate> activeDays7Set = new HashSet<>();
+        Set<LocalDate> activeDays14Set = new HashSet<>();
+
+        for (Session s : completedSessions) {
+            Instant ts = s.getCompletedAt() != null ? s.getCompletedAt() : s.getCreatedAt();
+            if (ts != null) {
+                LocalDate sessionDate = ts.atZone(clock.getZone()).toLocalDate();
+                if (sessionDate.isAfter(sevenDaysAgo) && !sessionDate.isAfter(today)) {
+                    activeDays7Set.add(sessionDate);
+                }
+                if (sessionDate.isAfter(fourteenDaysAgo) && !sessionDate.isAfter(today)) {
+                    activeDays14Set.add(sessionDate);
+                }
+            }
+        }
+        int activeDaysLast7 = activeDays7Set.size();
+        int activeDaysLast14 = activeDays14Set.size();
+
+        return new ProgressDashboardDto(summary, skills, modeBreakdown, scoreHistory, recentActivity, activeDaysLast7, activeDaysLast14);
     }
 
     private Double round(double value) {

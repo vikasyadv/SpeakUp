@@ -14,7 +14,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -66,6 +68,8 @@ class AnalyticsServiceTest {
         assertThat(result.getModeBreakdown().getStoryCount()).isEqualTo(0);
         assertThat(result.getScoreHistory()).isEmpty();
         assertThat(result.getRecentActivity()).isEmpty();
+        assertThat(result.getActiveDaysLast7()).isEqualTo(0);
+        assertThat(result.getActiveDaysLast14()).isEqualTo(0);
 
         verifyNoInteractions(sessionRepository, feedbackRepository);
     }
@@ -269,6 +273,65 @@ class AnalyticsServiceTest {
         assertThat(result.getRecentActivity().get(2).getSessionId()).isEqualTo(5L);
         assertThat(result.getRecentActivity().get(3).getSessionId()).isEqualTo(4L);
         assertThat(result.getRecentActivity().get(4).getSessionId()).isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("Active days: multiple sessions on the same calendar day count as one active day")
+    void activeDays_multipleSessionsOnSameDay_countsOnce() {
+        Clock fixedClock = Clock.fixed(Instant.parse("2026-09-25T12:00:00Z"), ZoneOffset.UTC);
+        AnalyticsService serviceWithFixedClock = new AnalyticsService(sessionRepository, feedbackRepository, userRepository, fixedClock);
+
+        when(userRepository.findById(10L)).thenReturn(Optional.of(testUser));
+
+        // Two sessions on 2026-09-25 (today)
+        Session s1 = createSession(1L, testUser, null, Mode.OFF_THE_CUFF, 60, 60, Instant.parse("2026-09-25T09:00:00Z"), "P1");
+        Session s2 = createSession(2L, testUser, null, Mode.RESEARCH, 60, 60, Instant.parse("2026-09-25T15:00:00Z"), "P2");
+        // One session on 2026-09-24 (yesterday)
+        Session s3 = createSession(3L, testUser, null, Mode.DEBATE, 60, 60, Instant.parse("2026-09-24T10:00:00Z"), "P3");
+        // One session on 2026-09-15 (10 days ago: in 14-day window, outside 7-day window)
+        Session s4 = createSession(4L, testUser, null, Mode.STORY, 60, 60, Instant.parse("2026-09-15T10:00:00Z"), "P4");
+        // One session on 2026-09-01 (24 days ago: outside both windows)
+        Session s5 = createSession(5L, testUser, null, Mode.OFF_THE_CUFF, 60, 60, Instant.parse("2026-09-01T10:00:00Z"), "P5");
+
+        when(sessionRepository.findByUserAndStatusOrderByChronologicalAsc(testUser, SessionStatus.COMPLETED))
+                .thenReturn(List.of(s1, s2, s3, s4, s5));
+        when(feedbackRepository.findBySessionIdInWithSession(any())).thenReturn(List.of());
+
+        ProgressDashboardDto result = serviceWithFixedClock.getProgressDashboard(CallerContext.authenticated(10L));
+
+        // Last 7 days: Sept 19 to Sept 25 -> s1, s2 (Sept 25, counts 1), s3 (Sept 24, counts 1) = 2 active days
+        assertThat(result.getActiveDaysLast7()).isEqualTo(2);
+        // Last 14 days: Sept 12 to Sept 25 -> s1, s2, s3, plus s4 (Sept 15) = 3 active days
+        assertThat(result.getActiveDaysLast14()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("Recent activity populates promptId when prompt is present and null when absent")
+    void recentActivity_populatesPromptId() {
+        when(userRepository.findById(10L)).thenReturn(Optional.of(testUser));
+
+        Prompt prompt = new Prompt();
+        prompt.setId(555L);
+
+        Session sWithPrompt = createSession(1L, testUser, null, Mode.OFF_THE_CUFF, 60, 60, Instant.parse("2026-09-20T10:00:00Z"), "P1");
+        sWithPrompt.setPrompt(prompt);
+
+        Session sWithoutPrompt = createSession(2L, testUser, null, Mode.DEBATE, 60, 60, Instant.parse("2026-09-21T10:00:00Z"), "P2");
+
+        when(sessionRepository.findByUserAndStatusOrderByChronologicalAsc(testUser, SessionStatus.COMPLETED))
+                .thenReturn(List.of(sWithPrompt, sWithoutPrompt));
+        when(feedbackRepository.findBySessionIdInWithSession(any())).thenReturn(List.of());
+
+        ProgressDashboardDto result = analyticsService.getProgressDashboard(CallerContext.authenticated(10L));
+
+        assertThat(result.getRecentActivity()).hasSize(2);
+        // Session 2 is more recent
+        assertThat(result.getRecentActivity().get(0).getSessionId()).isEqualTo(2L);
+        assertThat(result.getRecentActivity().get(0).getPromptId()).isNull();
+
+        // Session 1 is earlier
+        assertThat(result.getRecentActivity().get(1).getSessionId()).isEqualTo(1L);
+        assertThat(result.getRecentActivity().get(1).getPromptId()).isEqualTo(555L);
     }
 
     private Session createSession(Long id, User user, String guestId, Mode mode,
