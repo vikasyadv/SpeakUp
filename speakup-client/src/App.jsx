@@ -10,6 +10,7 @@ import DebatePage from './features/debate/DebatePage'
 import StoryPage from './features/story/StoryPage'
 import BookshelfPage from './features/bookshelf/BookshelfPage'
 import HistoryPage from './features/history/HistoryPage'
+import ProgressPage from './features/progress/ProgressPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ProfilePage from './pages/ProfilePage'
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/story/session/:sessionId" element={<SpeakingResultPage />} />
           <Route path="/bookshelf" element={<BookshelfPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/progress" element={<ProgressPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route

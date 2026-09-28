@@ -87,6 +87,12 @@ export default function Header() {
             >
               History
             </Link>
+            <Link
+              to="/progress"
+              className={`${styles.navLink} ${location.pathname === '/progress' ? styles.navActive : ''}`}
+            >
+              Progress
+            </Link>
           </div>
 
           {isAuthenticated ? (

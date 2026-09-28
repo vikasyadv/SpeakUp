@@ -1,6 +1,7 @@
 package com.speakup.repository;
 
 import com.speakup.model.Session;
+import com.speakup.model.SessionStatus;
 import com.speakup.model.User;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -32,4 +33,10 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
 
     @EntityGraph(attributePaths = {"prompt", "prompt.category"})
     List<Session> findTop20ByGuestIdAndUserIsNullOrderByCreatedAtDesc(String guestId);
+
+    @Query("SELECT s FROM Session s WHERE s.user = :user AND s.status = :status ORDER BY COALESCE(s.completedAt, s.createdAt) ASC, s.id ASC")
+    List<Session> findByUserAndStatusOrderByChronologicalAsc(@Param("user") User user, @Param("status") SessionStatus status);
+
+    @Query("SELECT s FROM Session s WHERE s.guestId = :guestId AND s.user IS NULL AND s.status = :status ORDER BY COALESCE(s.completedAt, s.createdAt) ASC, s.id ASC")
+    List<Session> findByGuestIdAndUserIsNullAndStatusOrderByChronologicalAsc(@Param("guestId") String guestId, @Param("status") SessionStatus status);
 }

@@ -61,9 +61,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
                         // Auth protected endpoints (me)
                         .requestMatchers("/api/v1/auth/me").authenticated()
-                        // Sessions & bookmarks remain accessible so existing guest flow is not broken
+                        // Sessions, bookmarks & analytics remain accessible so existing guest flow is not broken
                         .requestMatchers("/api/v1/sessions/**").permitAll()
                         .requestMatchers("/api/v1/bookmarks/**").permitAll()
+                        .requestMatchers("/api/v1/analytics/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
