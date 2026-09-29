@@ -7,6 +7,10 @@ import com.speakup.security.CallerContext;
 import com.speakup.security.UserPrincipal;
 import com.speakup.service.SessionService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -51,6 +55,21 @@ public class SessionController {
             @RequestHeader(value = "X-Guest-Id", required = false) String guestId) {
         CallerContext caller = CallerContext.resolve(principal, guestId);
         return ResponseEntity.ok(sessionService.abandonSession(id, caller));
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<SessionDto>> getSessions(
+            @RequestParam(required = false) String mode,
+            @RequestParam(required = false) String status,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "q", required = false) String q,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Guest-Id", required = false) String guestId) {
+        CallerContext caller = CallerContext.resolve(principal, guestId);
+        String effectiveSearch = (search != null && !search.isBlank()) ? search : q;
+        Page<SessionDto> sessions = sessionService.getSessions(mode, status, effectiveSearch, pageable, caller);
+        return ResponseEntity.ok(sessions);
     }
 
     @GetMapping("/{id}")

@@ -11,10 +11,15 @@ import com.speakup.repository.PromptRepository;
 import com.speakup.repository.SessionRepository;
 import com.speakup.repository.UserRepository;
 import com.speakup.security.CallerContext;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -187,6 +192,103 @@ public class SessionService {
 
     public List<SessionDto> getRecentSessions() {
         return getRecentSessions(CallerContext.anonymous());
+    }
+
+    /**
+     * Get paginated sessions with optional mode, status, and keyword search filtering,
+     * strictly scoped to current caller.
+     */
+    public Page<SessionDto> getSessions(
+            String modeStr,
+            String statusStr,
+            String search,
+            Pageable pageable,
+            CallerContext caller
+    ) {
+        Mode mode = parseMode(modeStr);
+        SessionStatus status = parseStatus(statusStr);
+        String cleanSearch = (search != null && !search.isBlank()) ? search.trim() : null;
+
+        Pageable effectivePageable = resolveDeterministicPageable(pageable);
+        String searchPattern = cleanSearch != null ? "%" + cleanSearch.toLowerCase() + "%" : null;
+
+        Page<Session> sessionPage;
+        if (caller != null && caller.isAuthenticated()) {
+            User user = userRepository.findById(caller.getUserId()).orElse(null);
+            if (user == null) {
+                return Page.empty(effectivePageable);
+            }
+            sessionPage = sessionRepository.findByUserWithFilters(user, mode, status, searchPattern, effectivePageable);
+        } else if (caller != null && caller.isGuest()) {
+            sessionPage = sessionRepository.findByGuestWithFilters(caller.getGuestId(), mode, status, searchPattern, effectivePageable);
+        } else {
+            sessionPage = sessionRepository.findAnonymousWithFilters(mode, status, searchPattern, effectivePageable);
+        }
+
+        if (sessionPage.isEmpty()) {
+            return sessionPage.map(s -> SessionMapper.toDto(s, false));
+        }
+
+        List<Long> sessionIds = sessionPage.getContent().stream().map(Session::getId).toList();
+        Set<Long> feedbackSessionIds = feedbackRepository.findSessionIdsWithFeedback(sessionIds);
+
+        return sessionPage.map(s -> SessionMapper.toDto(s, feedbackSessionIds != null && feedbackSessionIds.contains(s.getId())));
+    }
+
+    public Page<SessionDto> getSessions(String modeStr, String statusStr, String search, Pageable pageable) {
+        return getSessions(modeStr, statusStr, search, pageable, CallerContext.anonymous());
+    }
+
+    private Mode parseMode(String modeStr) {
+        if (modeStr == null || modeStr.isBlank()) {
+            return null;
+        }
+        String normalized = modeStr.trim().toUpperCase().replace('-', '_');
+        try {
+            return Mode.valueOf(normalized);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid mode: '" + modeStr + "'. Supported modes are: " + Arrays.toString(Mode.values()));
+        }
+    }
+
+    private SessionStatus parseStatus(String statusStr) {
+        if (statusStr == null || statusStr.isBlank()) {
+            return null;
+        }
+        String normalized = statusStr.trim().toUpperCase().replace('-', '_');
+        try {
+            return SessionStatus.valueOf(normalized);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid status: '" + statusStr + "'. Supported statuses are: " + Arrays.toString(SessionStatus.values()));
+        }
+    }
+
+    private Pageable resolveDeterministicPageable(Pageable pageable) {
+        if (pageable == null || pageable.isUnpaged()) {
+            return PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        }
+        if (pageable.getSort().isUnsorted()) {
+            return PageRequest.of(
+                    pageable.getPageNumber(),
+                    pageable.getPageSize(),
+                    Sort.by(Sort.Direction.DESC, "createdAt", "id")
+            );
+        }
+        boolean hasIdSort = false;
+        for (Sort.Order order : pageable.getSort()) {
+            if ("id".equalsIgnoreCase(order.getProperty())) {
+                hasIdSort = true;
+                break;
+            }
+        }
+        if (!hasIdSort) {
+            return PageRequest.of(
+                    pageable.getPageNumber(),
+                    pageable.getPageSize(),
+                    pageable.getSort().and(Sort.by(Sort.Direction.DESC, "id"))
+            );
+        }
+        return pageable;
     }
 
     /**

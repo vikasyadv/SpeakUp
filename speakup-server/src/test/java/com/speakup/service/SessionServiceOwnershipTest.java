@@ -18,6 +18,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -239,5 +243,50 @@ class SessionServiceOwnershipTest {
 
         assertThat(list).hasSize(1);
         assertThat(list.get(0).getPromptText()).isEqualTo("Guest A Topic");
+    }
+
+    @Test
+    @DisplayName("getSessions returns only authenticated user's sessions")
+    void getSessions_authenticatedUser_delegatesToRepositoryWithUser() {
+        when(userRepository.findById(101L)).thenReturn(Optional.of(userA));
+        Page<Session> page = new PageImpl<>(List.of(sessionUserA), PageRequest.of(0, 20), 1);
+        when(sessionRepository.findByUserWithFilters(eq(userA), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(page);
+        when(feedbackRepository.findSessionIdsWithFeedback(List.of(1L))).thenReturn(Set.of());
+
+        Page<SessionDto> result = sessionService.getSessions(null, null, null, PageRequest.of(0, 20), CallerContext.authenticated(101L));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getContent().get(0).getPromptText()).isEqualTo("User A Topic");
+    }
+
+    @Test
+    @DisplayName("getSessions returns only guest's sessions")
+    void getSessions_guest_delegatesToRepositoryWithGuestId() {
+        Page<Session> page = new PageImpl<>(List.of(sessionGuestA), PageRequest.of(0, 20), 1);
+        when(sessionRepository.findByGuestWithFilters(eq("guest-uuid-A"), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(page);
+        when(feedbackRepository.findSessionIdsWithFeedback(List.of(3L))).thenReturn(Set.of());
+
+        Page<SessionDto> result = sessionService.getSessions(null, null, null, PageRequest.of(0, 20), CallerContext.guest("guest-uuid-A"));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getContent().get(0).getPromptText()).isEqualTo("Guest A Topic");
+    }
+
+    @Test
+    @DisplayName("getSessions with invalid mode throws IllegalArgumentException")
+    void getSessions_invalidMode_throwsIllegalArgumentException() {
+        assertThatThrownBy(() -> sessionService.getSessions("NOT_A_REAL_MODE", null, null, PageRequest.of(0, 20), CallerContext.authenticated(101L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid mode: 'NOT_A_REAL_MODE'");
+    }
+
+    @Test
+    @DisplayName("getSessions with invalid status throws IllegalArgumentException")
+    void getSessions_invalidStatus_throwsIllegalArgumentException() {
+        assertThatThrownBy(() -> sessionService.getSessions(null, "NOT_A_REAL_STATUS", null, PageRequest.of(0, 20), CallerContext.authenticated(101L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid status: 'NOT_A_REAL_STATUS'");
     }
 }

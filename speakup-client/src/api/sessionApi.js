@@ -53,3 +53,19 @@ export async function getRecentSessions() {
 export async function deleteSession(sessionId) {
   await axiosClient.delete(`/sessions/${sessionId}`)
 }
+
+/**
+ * Get paginated sessions with optional filters.
+ * @param {{ mode?: string, status?: string, search?: string, page?: number, size?: number }} [params]
+ * @returns {Promise<{ content: SessionDto[], totalElements: number, totalPages: number, number: number, size: number, empty: boolean }>}
+ */
+export async function getSessions({ mode, status, search, page = 0, size = 20 } = {}) {
+  const params = {}
+  if (mode && mode !== 'ALL') params.mode = mode
+  if (status && status !== 'ALL') params.status = status
+  if (search && search.trim()) params.search = search.trim()
+  params.page = page
+  params.size = size
+  const response = await axiosClient.get('/sessions', { params })
+  return response.data
+}
