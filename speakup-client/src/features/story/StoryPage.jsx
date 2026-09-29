@@ -38,6 +38,7 @@ export default function StoryPage() {
   const [speakingState, setSpeakingState] = useState('PREPARING')
 
   const sessionIdRef = useRef(null)
+  const isCompletedRef = useRef(false)
   const prepTimeLeftRef = useRef(PREP_TIME_SECONDS)
   const speakingTimeLeftRef = useRef(speakingDuration)
   const prepDurationRef = useRef(0)
@@ -63,6 +64,9 @@ export default function StoryPage() {
 
     const currentSessionId = sessionIdRef.current
     if (currentSessionId) {
+      isCompletedRef.current = true
+      sessionIdRef.current = null
+      setSpeakingState('COMPLETED')
       try {
         await completeSession(currentSessionId, {
           transcript: capturedTranscript,
@@ -239,6 +243,7 @@ export default function StoryPage() {
         preparationNotes: prepNotes.trim() || null,
       })
       sessionIdRef.current = session.id
+      isCompletedRef.current = false
     } catch (err) {
       console.error('Failed to create Story session:', err)
     }
@@ -266,6 +271,7 @@ export default function StoryPage() {
       )
       sessionIdRef.current = null
     }
+    isCompletedRef.current = false
 
     stopListening()
     resetTranscript()
@@ -276,7 +282,7 @@ export default function StoryPage() {
   // Clean up if component unmounts while session is active
   useEffect(() => {
     return () => {
-      if (sessionIdRef.current && speakingState !== 'COMPLETED') {
+      if (sessionIdRef.current && !isCompletedRef.current && speakingState !== 'COMPLETED') {
         abandonSession(sessionIdRef.current).catch(() => {})
       }
       stopListening()

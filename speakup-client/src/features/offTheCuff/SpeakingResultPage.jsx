@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getSession } from '../../api/sessionApi'
 import SpeakingResult from './SpeakingResult'
 import Button from '../../components/common/Button'
@@ -12,6 +12,7 @@ import styles from './SpeakingResultPage.module.css'
 export default function SpeakingResultPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -69,9 +70,9 @@ export default function SpeakingResultPage() {
     )
   }
 
-  const isStory = session?.mode === 'STORY'
-  const isDebate = session?.mode === 'DEBATE'
-  const isResearch = session?.mode === 'RESEARCH'
+  const isStory = session?.mode ? session.mode === 'STORY' : location.pathname.startsWith('/story')
+  const isDebate = session?.mode ? session.mode === 'DEBATE' : location.pathname.startsWith('/debate')
+  const isResearch = session?.mode ? session.mode === 'RESEARCH' : location.pathname.startsWith('/research')
   const modePath = isStory ? '/story' : isDebate ? '/debate' : isResearch ? '/research' : '/off-the-cuff'
   const modeLabel = isStory ? 'Story' : isDebate ? 'Debate' : isResearch ? 'Research' : 'Off the Cuff'
 
